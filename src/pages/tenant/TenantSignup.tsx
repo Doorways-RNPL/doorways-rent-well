@@ -1,11 +1,12 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { BreadcrumbNav } from "@/components/ui/breadcrumb-nav";
 import { useToast } from "@/components/ui/use-toast";
 import { Eye, EyeOff, Mail, Phone, Lock, User } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,11 +18,30 @@ const TenantSignup = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
     email: "",
     phone: "",
     password: "",
     confirmPassword: "",
   });
+
+  // Check if user is coming from role selection
+  useEffect(() => {
+    const userRole = localStorage.getItem("user-role");
+    const userEmail = localStorage.getItem("tenant-email");
+    
+    if (userEmail) {
+      setFormData(prev => ({ ...prev, email: userEmail }));
+    }
+    
+    if (userRole !== "tenant" && !userEmail) {
+      toast({
+        title: "Information",
+        description: "Please select your role before proceeding.",
+      });
+    }
+  }, [toast]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -41,7 +61,7 @@ const TenantSignup = () => {
     setIsLoading(true);
     
     // Validate form
-    if (!formData.email || !formData.phone || !formData.password) {
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.password) {
       toast({
         title: "Missing information",
         description: "Please fill out all required fields.",
@@ -66,6 +86,9 @@ const TenantSignup = () => {
       // Store in local storage for persistence across pages
       localStorage.setItem("tenant-email", formData.email);
       localStorage.setItem("tenant-phone", formData.phone);
+      localStorage.setItem("tenant-firstName", formData.firstName);
+      localStorage.setItem("tenant-lastName", formData.lastName);
+      localStorage.setItem("user-role", "tenant");
       
       toast({
         title: "Account created!",
@@ -79,12 +102,30 @@ const TenantSignup = () => {
     }, 1500);
   };
 
+  const breadcrumbItems = [
+    { label: "Apply", href: "/apply" },
+    { label: "Create Account", active: true },
+  ];
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       <main className="pt-24 pb-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-md mx-auto">
+            <BreadcrumbNav items={breadcrumbItems} />
+            
+            <div className="mb-6">
+              <div className="w-full bg-white/10 rounded-full h-2 mb-2">
+                <div className="bg-primary h-2 rounded-full" style={{ width: "33%" }}></div>
+              </div>
+              <div className="flex justify-between text-xs text-white/60">
+                <span>Create Account</span>
+                <span>Basic Info</span>
+                <span>Complete</span>
+              </div>
+            </div>
+
             <Card className="border-primary/20 bg-background/50 shadow-lg">
               <CardHeader className="text-center">
                 <CardTitle className="text-3xl font-bold text-primary">Start Your Tenant Journey</CardTitle>
@@ -94,6 +135,44 @@ const TenantSignup = () => {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-5">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <Label htmlFor="firstName">First Name</Label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground">
+                          <User className="h-5 w-5" />
+                        </div>
+                        <Input
+                          id="firstName"
+                          name="firstName"
+                          value={formData.firstName}
+                          onChange={handleInputChange}
+                          className="pl-10"
+                          placeholder="First name"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="lastName">Last Name</Label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground">
+                          <User className="h-5 w-5" />
+                        </div>
+                        <Input
+                          id="lastName"
+                          name="lastName"
+                          value={formData.lastName}
+                          onChange={handleInputChange}
+                          className="pl-10"
+                          placeholder="Last name"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="space-y-1">
                     <Label htmlFor="email">Email address</Label>
                     <div className="relative">
@@ -166,6 +245,7 @@ const TenantSignup = () => {
                         ></div>
                       </div>
                     )}
+                    <p className="text-xs text-white/60 mt-1">Password must be at least 6 characters</p>
                   </div>
 
                   <div className="space-y-1">

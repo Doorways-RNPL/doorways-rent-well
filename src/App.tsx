@@ -31,6 +31,8 @@ const App = () => (
             <Route path="/apply" element={<TenantSignup />} />
             <Route path="/tenant/application" element={<TenantApplication />} />
             <Route path="/tenant/dashboard" element={<TenantDashboard />} />
+            {/* Add route for landlord's property listing */}
+            <Route path="/list-property" element={<TenantSignup />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
