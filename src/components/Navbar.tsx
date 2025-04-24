@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
@@ -7,11 +6,27 @@ import { Menu, X } from 'lucide-react';
 // Define a local fallback image that's guaranteed to work
 // We'll use a data URI for immediate availability with no network dependency
 const DATA_URI_LOGO = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWhvbWUiPjxwYXRoIGQ9Im0zIDkgOSAtNyA5IDd2MTFhMiAyIDAgMCAxLTIgMkg1YTIgMiAwIDAgMS0yLTJWOVoiLz48cG9seWxpbmUgcG9pbnRzPSI5IDIyIDkgMTIgMTUgMTIgMTUgMjIiLz48L3N2Zz4=";
+import { useAuth } from "@/components/AuthProvider";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [logoLoaded, setLogoLoaded] = useState(false);
   const [logoError, setLogoError] = useState(false);
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Error logging out",
+        description: error.message,
+      });
+    }
+  };
   
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -67,12 +82,20 @@ const Navbar = () => {
           </div>
           
           <div className="hidden md:flex items-center space-x-4">
-            <Button variant="outline" asChild className="border-white/20 text-white hover:bg-white/10">
-              <Link to="/login">Log in</Link>
-            </Button>
-            <Button asChild className="bg-primary text-background hover:bg-primary/90">
-              <Link to="/signup">Sign up</Link>
-            </Button>
+            {user ? (
+              <Button variant="outline" onClick={handleLogout} className="border-white/20 text-white hover:bg-white/10">
+                Log out
+              </Button>
+            ) : (
+              <>
+                <Button variant="outline" asChild className="border-white/20 text-white hover:bg-white/10">
+                  <Link to="/auth">Log in</Link>
+                </Button>
+                <Button asChild className="bg-primary text-background hover:bg-primary/90">
+                  <Link to="/auth">Sign up</Link>
+                </Button>
+              </>
+            )}
           </div>
           
           <div className="md:hidden">
@@ -107,10 +130,10 @@ const Navbar = () => {
             </Link>
             <div className="mt-4 flex flex-col space-y-2 px-3">
               <Button variant="outline" asChild className="w-full justify-center border-white/20 text-white hover:bg-white/10">
-                <Link to="/login">Log in</Link>
+                <Link to="/auth">Log in</Link>
               </Button>
               <Button asChild className="w-full justify-center bg-primary text-background hover:bg-primary/90">
-                <Link to="/signup">Sign up</Link>
+                <Link to="/auth">Sign up</Link>
               </Button>
             </div>
           </div>
