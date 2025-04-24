@@ -1,9 +1,10 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
-import logoImage from '/lovable-uploads/53350b8e-5dd6-415e-9124-93bf1de175ff.png';
+
+// Using a more reliable approach for the logo
+const logoUrl = "https://lovable-uploads.s3.amazonaws.com/53350b8e-5dd6-415e-9124-93bf1de175ff.png";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -19,13 +20,19 @@ const Navbar = () => {
           <div className="flex-shrink-0 flex items-center">
             <Link to="/" className="flex items-center space-x-3">
               <img 
-                src={logoImage} 
+                src={logoUrl} 
                 alt="Doorways Logo" 
                 className="h-10 w-10 object-contain"
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = "https://via.placeholder.com/40";
+                }}
               />
               <span className="text-2xl font-bold text-primary">Doorways</span>
             </Link>
           </div>
+          
+          
           
           <div className="hidden md:flex items-center space-x-8">
             <Link to="/how-it-works" className="text-white/70 hover:text-primary transition-colors">How It Works</Link>
@@ -33,6 +40,8 @@ const Navbar = () => {
             <Link to="/tenants" className="text-white/70 hover:text-primary transition-colors">For Tenants</Link>
             <Link to="/about" className="text-white/70 hover:text-primary transition-colors">About Us</Link>
           </div>
+          
+          
           
           <div className="hidden md:flex items-center space-x-4">
             <Button variant="outline" asChild className="border-white/20 text-white hover:bg-white/10">
@@ -42,6 +51,8 @@ const Navbar = () => {
               <Link to="/signup">Sign up</Link>
             </Button>
           </div>
+          
+          
           
           <div className="md:hidden">
             <button
@@ -58,6 +69,7 @@ const Navbar = () => {
 
       {/* Mobile menu */}
       {isMenuOpen && (
+        
         <div className="md:hidden">
           <div className="bg-background/95 backdrop-blur-sm px-2 pt-2 pb-3 space-y-1 sm:px-3 border-b border-white/10">
             <Link to="/how-it-works" className="block px-3 py-2 rounded-md text-base font-medium text-white/70 hover:text-primary hover:bg-white/10">
