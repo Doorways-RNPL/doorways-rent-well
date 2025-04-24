@@ -12,10 +12,10 @@ export default {
   theme: {
     container: {
       center: true,
-      padding: '2rem',
+      padding: "2rem",
       screens: {
-        '2xl': '1400px'
-      }
+        "2xl": "1400px",
+      },
     },
     extend: {
       colors: {
@@ -28,11 +28,11 @@ export default {
         secondary: {
           DEFAULT: '#000000',
           dark: '#FFC200',
-          light: '#333333',
+          light: '#FFFFFF',
           foreground: '#FFC200'
         },
         background: {
-          DEFAULT: '#0F0F0F',  // Dark background inspired by modern design
+          DEFAULT: '#0F0F0F',
           dark: '#000000',
           light: '#1A1A1A'
         },
@@ -42,6 +42,11 @@ export default {
         },
         border: {
           DEFAULT: '#333333'
+        },
+        white: {
+          DEFAULT: '#FFFFFF',
+          soft: '#F5F5F5',
+          subtle: '#E0E0E0'
         },
         border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
