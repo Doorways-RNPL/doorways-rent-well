@@ -34,6 +34,7 @@ const TenantApplication = () => {
     idNumber: "",
     
     // Step 2: Address
+    residenceType: "new" as 'current' | 'new',
     currentAddress: "",
     currentCity: "",
     moveInDate: "",
@@ -46,8 +47,6 @@ const TenantApplication = () => {
     // Step 4: Lease details
     propertyAddress: "",
     propertyCity: "",
-    propertyState: "",
-    propertyZip: "",
     monthlyRent: "",
     leaseStartDate: "",
     leaseDuration: "12",
@@ -131,7 +130,14 @@ const TenantApplication = () => {
         }
         break;
       case 4:
-        if (!applicationData.propertyAddress || !applicationData.monthlyRent || !applicationData.leaseStartDate) {
+        if (
+          !applicationData.monthlyRent || 
+          !applicationData.leaseStartDate || 
+          !applicationData.landlordName || 
+          !applicationData.landlordEmail ||
+          !applicationData.landlordPhone ||
+          (applicationData.residenceType === 'new' && (!applicationData.propertyAddress || !applicationData.propertyCity))
+        ) {
           toast({
             title: "Missing information",
             description: "Please fill out all required lease details before continuing.",

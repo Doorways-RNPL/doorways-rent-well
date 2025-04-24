@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 interface TenantStep4Props {
   data: {
+    residenceType: 'current' | 'new';
     propertyAddress: string;
     propertyCity: string;
     monthlyRent: string;
@@ -13,39 +14,72 @@ interface TenantStep4Props {
     landlordName: string;
     landlordEmail: string;
     landlordPhone: string;
+    currentAddress?: string;
+    currentCity?: string;
   };
   updateData: (data: Partial<TenantStep4Props['data']>) => void;
 }
 
 const TenantStep4 = ({ data, updateData }: TenantStep4Props) => {
+  const isCurrentResidence = data.residenceType === 'current';
+
+  // Auto-populate property details if it's the current residence
+  if (isCurrentResidence && data.currentAddress && data.currentCity && 
+      (data.propertyAddress !== data.currentAddress || data.propertyCity !== data.currentCity)) {
+    updateData({
+      propertyAddress: data.currentAddress,
+      propertyCity: data.currentCity
+    });
+  }
+
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-white mb-4">Lease Details</h2>
-        <p className="text-white/70 mb-6">Please provide information about the property you're applying for.</p>
+        <h2 className="text-xl font-semibold text-white mb-4">
+          {isCurrentResidence ? 'Current Lease Details' : 'New Lease Details'}
+        </h2>
+        <p className="text-white/70 mb-6">
+          {isCurrentResidence 
+            ? 'Please confirm your current lease information.'
+            : 'Please provide information about the property you're applying for.'}
+        </p>
       </div>
 
       <div className="space-y-6">
-        <div className="space-y-2">
-          <Label htmlFor="propertyAddress">Property Street Address</Label>
-          <Input
-            id="propertyAddress"
-            value={data.propertyAddress}
-            onChange={(e) => updateData({ propertyAddress: e.target.value })}
-            placeholder="789 Rental St"
-            required
-          />
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="propertyCity">City</Label>
-          <Input
-            id="propertyCity"
-            value={data.propertyCity}
-            onChange={(e) => updateData({ propertyCity: e.target.value })}
-            required
-          />
-        </div>
+        {isCurrentResidence ? (
+          <div className="bg-white/5 p-4 rounded-lg">
+            <p className="text-sm text-white/70">
+              Using your current address for this application:
+              <br />
+              <span className="text-primary font-medium">
+                {data.currentAddress}, {data.currentCity}
+              </span>
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="propertyAddress">Property Street Address</Label>
+              <Input
+                id="propertyAddress"
+                value={data.propertyAddress}
+                onChange={(e) => updateData({ propertyAddress: e.target.value })}
+                placeholder="789 Rental St"
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="propertyCity">City</Label>
+              <Input
+                id="propertyCity"
+                value={data.propertyCity}
+                onChange={(e) => updateData({ propertyCity: e.target.value })}
+                required
+              />
+            </div>
+          </>
+        )}
         
         <div className="space-y-2">
           <Label htmlFor="monthlyRent">Monthly Rent (R)</Label>
@@ -63,7 +97,9 @@ const TenantStep4 = ({ data, updateData }: TenantStep4Props) => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <Label htmlFor="leaseStartDate">Lease Start Date</Label>
+            <Label htmlFor="leaseStartDate">
+              {isCurrentResidence ? 'Original Lease Start Date' : 'Lease Start Date'}
+            </Label>
             <Input
               id="leaseStartDate"
               type="date"
@@ -74,7 +110,9 @@ const TenantStep4 = ({ data, updateData }: TenantStep4Props) => {
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="leaseDuration">Lease Duration (months)</Label>
+            <Label htmlFor="leaseDuration">
+              {isCurrentResidence ? 'Remaining Lease Duration' : 'Lease Duration'}
+            </Label>
             <Select 
               value={data.leaseDuration} 
               onValueChange={(value) => updateData({ leaseDuration: value })}
@@ -94,7 +132,9 @@ const TenantStep4 = ({ data, updateData }: TenantStep4Props) => {
       </div>
 
       <div className="border-t border-white/10 pt-6">
-        <h3 className="text-lg font-medium text-white/90 mb-4">Landlord Information</h3>
+        <h3 className="text-lg font-medium text-white/90 mb-4">
+          {isCurrentResidence ? 'Current Landlord Information' : 'Landlord Information'}
+        </h3>
         
         <div className="space-y-6">
           <div className="space-y-2">

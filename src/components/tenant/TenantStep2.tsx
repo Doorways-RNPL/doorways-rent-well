@@ -1,9 +1,11 @@
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import ResidenceTypeSelection from "./ResidenceTypeSelection";
 
 interface TenantStep2Props {
   data: {
+    residenceType: 'current' | 'new';
     currentAddress: string;
     currentCity: string;
     moveInDate: string;
@@ -19,9 +21,14 @@ const TenantStep2 = ({ data, updateData }: TenantStep2Props) => {
         <p className="text-white/70 mb-6">Please provide your current address information.</p>
       </div>
 
+      <ResidenceTypeSelection
+        value={data.residenceType}
+        onChange={(value) => updateData({ residenceType: value })}
+      />
+
       <div className="space-y-6">
         <div className="space-y-2">
-          <Label htmlFor="currentAddress">Street Address</Label>
+          <Label htmlFor="currentAddress">Current Street Address</Label>
           <Input
             id="currentAddress"
             value={data.currentAddress}
