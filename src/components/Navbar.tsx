@@ -1,29 +1,27 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, ImageOff } from 'lucide-react';
 
-// Fallback placeholder images
-const PLACEHOLDER_IMAGES = [
-  "https://via.placeholder.com/40",
-  "https://images.unsplash.com/photo-1488590528505-98d2b5aba04b/40x40",
-  "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d/40x40"
-];
+// Single reliable fallback
+const FALLBACK_IMAGE = "https://via.placeholder.com/40";
+const MAIN_LOGO = "https://lovable-uploads.s3.amazonaws.com/53350b8e-5dd6-415e-9124-93bf1de175ff.png";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [logoSrc, setLogoSrc] = useState("https://lovable-uploads.s3.amazonaws.com/53350b8e-5dd6-415e-9124-93bf1de175ff.png");
-
+  const [hasLogoError, setHasLogoError] = useState(false);
+  
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
 
-  const handleLogoError = () => {
-    // Cycle through placeholder images if logo fails to load
-    const currentIndex = PLACEHOLDER_IMAGES.indexOf(logoSrc);
-    const nextIndex = (currentIndex + 1) % PLACEHOLDER_IMAGES.length;
-    setLogoSrc(PLACEHOLDER_IMAGES[nextIndex]);
+  const handleLogoError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    // Only switch to fallback once
+    if (!hasLogoError) {
+      console.log('Logo failed to load, using fallback');
+      e.currentTarget.src = FALLBACK_IMAGE;
+      setHasLogoError(true);
+    }
   };
 
   return (
@@ -32,26 +30,30 @@ const Navbar = () => {
         <div className="flex justify-between h-16 items-center">
           <div className="flex-shrink-0 flex items-center">
             <Link to="/" className="flex items-center space-x-3">
-              <img 
-                src={logoSrc} 
-                alt="Doorways Logo" 
-                className="h-10 w-10 object-contain"
-                onError={handleLogoError}
-              />
+              <div className="relative h-10 w-10">
+                {hasLogoError && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded">
+                    <ImageOff className="h-6 w-6 text-gray-400" />
+                  </div>
+                )}
+                <img 
+                  src={MAIN_LOGO}
+                  alt="Doorways Logo"
+                  loading="eager"
+                  className="h-10 w-10 object-contain"
+                  onError={handleLogoError}
+                />
+              </div>
               <span className="text-2xl font-bold text-primary">Doorways</span>
             </Link>
           </div>
-          
-          
-          
+
           <div className="hidden md:flex items-center space-x-8">
             <Link to="/how-it-works" className="text-white/70 hover:text-primary transition-colors">How It Works</Link>
             <Link to="/landlords" className="text-white/70 hover:text-primary transition-colors">For Landlords</Link>
             <Link to="/tenants" className="text-white/70 hover:text-primary transition-colors">For Tenants</Link>
             <Link to="/about" className="text-white/70 hover:text-primary transition-colors">About Us</Link>
           </div>
-          
-          
           
           <div className="hidden md:flex items-center space-x-4">
             <Button variant="outline" asChild className="border-white/20 text-white hover:bg-white/10">
@@ -61,8 +63,6 @@ const Navbar = () => {
               <Link to="/signup">Sign up</Link>
             </Button>
           </div>
-          
-          
           
           <div className="md:hidden">
             <button
