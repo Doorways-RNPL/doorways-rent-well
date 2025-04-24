@@ -30,24 +30,24 @@ const steps = [
 
 const HowItWorks = () => {
   return (
-    <section id="how-it-works" className="py-20 bg-white">
+    <section id="how-it-works" className="py-20 bg-black">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">How Doorways RNPL Works</h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-bold text-primary mb-4">How Doorways RNPL Works</h2>
+          <p className="text-xl text-white/80 max-w-2xl mx-auto">
             Our simple process makes renting accessible with reduced upfront costs.
           </p>
         </div>
         
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
           {steps.map((step) => (
-            <div key={step.id} className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-300">
+            <div key={step.id} className="bg-white/5 p-6 rounded-xl border border-white/10 backdrop-blur-sm hover:bg-white/10 transition-colors">
               <div className="flex flex-col items-center text-center">
-                <div className="w-16 h-16 flex items-center justify-center bg-soft-purple rounded-full mb-4 text-3xl">
+                <div className="w-16 h-16 flex items-center justify-center bg-primary/10 rounded-full mb-4 text-3xl">
                   {step.icon}
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">{step.title}</h3>
-                <p className="text-gray-600">{step.description}</p>
+                <h3 className="text-xl font-semibold text-primary mb-2">{step.title}</h3>
+                <p className="text-white/70">{step.description}</p>
                 
                 {step.id < steps.length && (
                   <div className="hidden lg:block w-24 h-1 border-t-2 border-dashed border-primary/30 absolute right-[-3rem] top-1/2"></div>

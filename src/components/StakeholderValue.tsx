@@ -54,21 +54,21 @@ const stakeholders = [
 
 const StakeholderValue = () => {
   return (
-    <section className="py-20 bg-gray-50">
+    <section className="py-20 bg-background">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Who Doorways RNPL Is For</h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-bold text-primary mb-4">Who Doorways RNPL Is For</h2>
+          <p className="text-xl text-white/80 max-w-2xl mx-auto">
             Our platform creates value for everyone in the rental ecosystem.
           </p>
         </div>
         
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
           {stakeholders.map((stakeholder) => (
-            <Card key={stakeholder.id} className="border-none shadow-lg hover:shadow-xl transition-shadow duration-300">
-              <CardHeader className={`${stakeholder.bgColor} rounded-t-lg p-6`}>
-                <CardTitle className="text-xl font-bold">{stakeholder.title}</CardTitle>
-                <CardDescription className="text-gray-700 mt-2">
+            <Card key={stakeholder.id} className="bg-white/5 border-white/10 backdrop-blur-sm hover:bg-white/10 transition-colors">
+              <CardHeader className="p-6">
+                <CardTitle className="text-xl font-bold text-primary">{stakeholder.title}</CardTitle>
+                <CardDescription className="text-white/70 mt-2">
                   {stakeholder.description}
                 </CardDescription>
               </CardHeader>
@@ -81,7 +81,7 @@ const StakeholderValue = () => {
                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                         </svg>
                       </span>
-                      <span className="text-gray-700">{benefit}</span>
+                      <span className="text-white/80">{benefit}</span>
                     </li>
                   ))}
                 </ul>
