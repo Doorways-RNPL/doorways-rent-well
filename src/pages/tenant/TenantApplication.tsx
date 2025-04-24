@@ -130,6 +130,30 @@ const TenantApplication = () => {
         }
         break;
       case 4:
+        const isCurrentResidence = applicationData.residenceType === 'current';
+        const leaseDuration = parseInt(applicationData.leaseDuration);
+        
+        // Validation for current residence
+        if (isCurrentResidence) {
+          if (leaseDuration < 2) {
+            toast({
+              title: "Insufficient lease duration",
+              description: "You must have at least 2 months remaining on your current lease.",
+              variant: "destructive",
+            });
+            return false;
+          }
+        } 
+        // Validation for new lease
+        else if (leaseDuration < 12) {
+          toast({
+            title: "Insufficient lease duration",
+            description: "New lease applications require a minimum duration of 12 months.",
+            variant: "destructive",
+          });
+          return false;
+        }
+
         if (
           !applicationData.monthlyRent || 
           !applicationData.leaseStartDate || 

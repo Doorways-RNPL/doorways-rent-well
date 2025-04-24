@@ -1,7 +1,9 @@
-
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { HelpCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
 interface TenantStep4Props {
   data: {
@@ -32,6 +34,20 @@ const TenantStep4 = ({ data, updateData }: TenantStep4Props) => {
     });
   }
 
+  // Calculate remaining months for current residence
+  const calculateRemainingMonths = () => {
+    if (!data.leaseStartDate || !data.leaseDuration) return 0;
+    const startDate = new Date(data.leaseStartDate);
+    const totalMonths = parseInt(data.leaseDuration);
+    const endDate = new Date(startDate.setMonth(startDate.getMonth() + totalMonths));
+    const today = new Date();
+    const remainingMonths = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24 * 30));
+    return remainingMonths;
+  };
+
+  const remainingMonths = isCurrentResidence ? calculateRemainingMonths() : null;
+  const showWarning = isCurrentResidence && remainingMonths !== null && remainingMonths < 2;
+
   return (
     <div className="space-y-6">
       <div>
@@ -44,6 +60,14 @@ const TenantStep4 = ({ data, updateData }: TenantStep4Props) => {
             : 'Please provide information about the property you\'re applying for.'}
         </p>
       </div>
+
+      {showWarning && (
+        <Alert variant="destructive">
+          <AlertDescription>
+            Warning: Your current lease has less than 2 months remaining. This may affect your application.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="space-y-6">
         {isCurrentResidence ? (
@@ -97,9 +121,25 @@ const TenantStep4 = ({ data, updateData }: TenantStep4Props) => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <Label htmlFor="leaseStartDate">
-              {isCurrentResidence ? 'Original Lease Start Date' : 'Lease Start Date'}
-            </Label>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="leaseStartDate">
+                {isCurrentResidence ? 'Original Lease Start Date' : 'Lease Start Date'}
+              </Label>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <HelpCircle className="h-4 w-4 text-white/50" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="max-w-xs">
+                      {isCurrentResidence 
+                        ? 'The date your current lease began'
+                        : 'When would you like to start your new lease?'}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <Input
               id="leaseStartDate"
               type="date"
@@ -110,9 +150,25 @@ const TenantStep4 = ({ data, updateData }: TenantStep4Props) => {
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="leaseDuration">
-              {isCurrentResidence ? 'Remaining Lease Duration' : 'Lease Duration'}
-            </Label>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="leaseDuration">
+                {isCurrentResidence ? 'Remaining Lease Duration' : 'Lease Duration'}
+              </Label>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <HelpCircle className="h-4 w-4 text-white/50" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="max-w-xs">
+                      {isCurrentResidence
+                        ? 'Remaining time on your current lease. Must be at least 2 months.'
+                        : 'Minimum lease duration is 12 months for new applications.'}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <Select 
               value={data.leaseDuration} 
               onValueChange={(value) => updateData({ leaseDuration: value })}
@@ -121,12 +177,27 @@ const TenantStep4 = ({ data, updateData }: TenantStep4Props) => {
                 <SelectValue placeholder="Select lease duration" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="6">6 months</SelectItem>
-                <SelectItem value="12">12 months</SelectItem>
-                <SelectItem value="18">18 months</SelectItem>
-                <SelectItem value="24">24 months</SelectItem>
+                {!isCurrentResidence ? (
+                  <>
+                    <SelectItem value="12">12 months</SelectItem>
+                    <SelectItem value="18">18 months</SelectItem>
+                    <SelectItem value="24">24 months</SelectItem>
+                  </>
+                ) : (
+                  <>
+                    <SelectItem value="2">2 months</SelectItem>
+                    <SelectItem value="3">3 months</SelectItem>
+                    <SelectItem value="6">6 months</SelectItem>
+                    <SelectItem value="12">12 months</SelectItem>
+                  </>
+                )}
               </SelectContent>
             </Select>
+            <p className="text-sm text-white/50">
+              {isCurrentResidence
+                ? 'Minimum 2 months remaining on current lease'
+                : 'Minimum 12 months for new leases'}
+            </p>
           </div>
         </div>
       </div>
