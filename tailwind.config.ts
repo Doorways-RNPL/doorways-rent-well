@@ -1,42 +1,49 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
-	darkMode: ["class"],
-	content: [
-		"./pages/**/*.{ts,tsx}",
-		"./components/**/*.{ts,tsx}",
-		"./app/**/*.{ts,tsx}",
-		"./src/**/*.{ts,tsx}",
-	],
-	prefix: "",
-	theme: {
-		container: {
-			center: true,
-			padding: '2rem',
-			screens: {
-				'2xl': '1400px'
-			}
-		},
-		extend: {
-			colors: {
-				border: 'hsl(var(--border))',
+  darkMode: ["class"],
+  content: [
+    "./pages/**/*.{ts,tsx}",
+    "./components/**/*.{ts,tsx}",
+    "./app/**/*.{ts,tsx}",
+    "./src/**/*.{ts,tsx}",
+  ],
+  prefix: "",
+  theme: {
+    container: {
+      center: true,
+      padding: '2rem',
+      screens: {
+        '2xl': '1400px'
+      }
+    },
+    extend: {
+      colors: {
+        // Update primary colors to yellow and black
+        primary: {
+          DEFAULT: '#FFC200',
+          dark: '#000000',
+          light: '#FFF9E6',
+          foreground: '#000000'
+        },
+        secondary: {
+          DEFAULT: '#000000',
+          dark: '#FFC200',
+          light: '#333333',
+          foreground: '#FFC200'
+        },
+        background: {
+          DEFAULT: '#FFFFFF',
+          dark: '#000000'
+        },
+        foreground: {
+          DEFAULT: '#000000',
+          light: '#FFC200'
+        },
+        border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
 				ring: 'hsl(var(--ring))',
-				background: 'hsl(var(--background))',
-				foreground: 'hsl(var(--foreground))',
-				primary: {
-					DEFAULT: '#9b87f5',
-					dark: '#7E69AB',
-					light: '#E5DEFF',
-					foreground: 'hsl(var(--primary-foreground))'
-				},
-				secondary: {
-					DEFAULT: '#6E59A5',
-					dark: '#1A1F2C',
-					light: '#D6BCFA',
-					foreground: 'hsl(var(--secondary-foreground))'
-				},
+				
 				destructive: {
 					DEFAULT: 'hsl(var(--destructive))',
 					foreground: 'hsl(var(--destructive-foreground))'
@@ -77,8 +84,8 @@ export default {
 					blue: '#D3E4FD',
 					gray: '#F1F0FB'
 				}
-			},
-			fontFamily: {
+      },
+      fontFamily: {
 				sans: ['Inter', 'sans-serif'],
 			},
 			borderRadius: {
@@ -133,7 +140,7 @@ export default {
 			backgroundImage: {
 				'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
 			}
-		}
-	},
-	plugins: [require("tailwindcss-animate")],
+    }
+  },
+  plugins: [require("tailwindcss-animate")],
 } satisfies Config;
