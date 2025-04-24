@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -33,26 +32,16 @@ const TenantApplication = () => {
     lastName: "",
     dateOfBirth: "",
     idNumber: "",
-    idType: "drivers-license",
     
-    // Step 2: Address history
+    // Step 2: Address
     currentAddress: "",
     currentCity: "",
-    currentState: "",
-    currentZip: "",
     moveInDate: "",
-    previousAddress: "",
-    previousCity: "",
-    previousState: "",
-    previousZip: "",
     
     // Step 3: Employment
     employerName: "",
     jobTitle: "",
-    employmentStartDate: "",
     monthlyIncome: "",
-    employerPhone: "",
-    employerAddress: "",
     
     // Step 4: Lease details
     propertyAddress: "",
@@ -66,7 +55,7 @@ const TenantApplication = () => {
     landlordEmail: "",
     landlordPhone: "",
     
-    // Step 5: Uploads (will store file names or URLs)
+    // Step 5: Uploads
     idDocument: null as File | null,
     proofOfIncome: null as File | null,
     leaseAgreement: null as File | null,
@@ -122,7 +111,7 @@ const TenantApplication = () => {
         }
         break;
       case 2:
-        if (!applicationData.currentAddress || !applicationData.currentCity || !applicationData.currentState || !applicationData.currentZip) {
+        if (!applicationData.currentAddress || !applicationData.currentCity || !applicationData.moveInDate) {
           toast({
             title: "Missing information",
             description: "Please fill out all current address fields before continuing.",

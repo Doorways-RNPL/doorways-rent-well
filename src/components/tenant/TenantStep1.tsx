@@ -1,7 +1,6 @@
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface TenantStep1Props {
   data: {
@@ -9,7 +8,6 @@ interface TenantStep1Props {
     lastName: string;
     dateOfBirth: string;
     idNumber: string;
-    idType: string;
   };
   updateData: (data: Partial<TenantStep1Props['data']>) => void;
 }
@@ -55,24 +53,6 @@ const TenantStep1 = ({ data, updateData }: TenantStep1Props) => {
           onChange={(e) => updateData({ dateOfBirth: e.target.value })}
           required
         />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="idType">ID Type</Label>
-        <Select 
-          value={data.idType} 
-          onValueChange={(value) => updateData({ idType: value })}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select ID Type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="drivers-license">Driver's License</SelectItem>
-            <SelectItem value="passport">Passport</SelectItem>
-            <SelectItem value="state-id">State ID</SelectItem>
-            <SelectItem value="military-id">Military ID</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
       <div className="space-y-2">
