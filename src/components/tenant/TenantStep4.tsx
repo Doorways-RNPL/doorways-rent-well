@@ -7,8 +7,6 @@ interface TenantStep4Props {
   data: {
     propertyAddress: string;
     propertyCity: string;
-    propertyState: string;
-    propertyZip: string;
     monthlyRent: string;
     leaseStartDate: string;
     leaseDuration: string;
@@ -34,45 +32,23 @@ const TenantStep4 = ({ data, updateData }: TenantStep4Props) => {
             id="propertyAddress"
             value={data.propertyAddress}
             onChange={(e) => updateData({ propertyAddress: e.target.value })}
-            placeholder="789 Rental St, Apt 3C"
+            placeholder="789 Rental St"
             required
           />
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="propertyCity">City</Label>
-            <Input
-              id="propertyCity"
-              value={data.propertyCity}
-              onChange={(e) => updateData({ propertyCity: e.target.value })}
-              required
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="propertyState">State</Label>
-            <Input
-              id="propertyState"
-              value={data.propertyState}
-              onChange={(e) => updateData({ propertyState: e.target.value })}
-              required
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="propertyZip">ZIP Code</Label>
-            <Input
-              id="propertyZip"
-              value={data.propertyZip}
-              onChange={(e) => updateData({ propertyZip: e.target.value })}
-              required
-            />
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="propertyCity">City</Label>
+          <Input
+            id="propertyCity"
+            value={data.propertyCity}
+            onChange={(e) => updateData({ propertyCity: e.target.value })}
+            required
+          />
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="monthlyRent">Monthly Rent ($)</Label>
+          <Label htmlFor="monthlyRent">Monthly Rent (R)</Label>
           <Input
             id="monthlyRent"
             type="number"
@@ -149,6 +125,7 @@ const TenantStep4 = ({ data, updateData }: TenantStep4Props) => {
                 id="landlordPhone"
                 value={data.landlordPhone}
                 onChange={(e) => updateData({ landlordPhone: e.target.value })}
+                placeholder="+27 82 123 4567"
                 required
               />
             </div>
