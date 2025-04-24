@@ -41,7 +41,7 @@ const TenantStep4 = ({ data, updateData }: TenantStep4Props) => {
         <p className="text-white/70 mb-6">
           {isCurrentResidence 
             ? 'Please confirm your current lease information.'
-            : 'Please provide information about the property you're applying for.'}
+            : 'Please provide information about the property you\'re applying for.'}
         </p>
       </div>
 
