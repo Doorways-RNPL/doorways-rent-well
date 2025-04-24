@@ -1,27 +1,29 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { Menu, X, ImageOff } from 'lucide-react';
 
-// Single reliable fallback
-const FALLBACK_IMAGE = "https://via.placeholder.com/40";
-const MAIN_LOGO = "https://lovable-uploads.s3.amazonaws.com/53350b8e-5dd6-415e-9124-93bf1de175ff.png";
+// Define a local fallback image that's guaranteed to work
+// We'll use a data URI for immediate availability with no network dependency
+const DATA_URI_LOGO = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWhvbWUiPjxwYXRoIGQ9Im0zIDkgOSAtNyA5IDd2MTFhMiAyIDAgMCAxLTIgMkg1YTIgMiAwIDAgMS0yLTJWOVoiLz48cG9seWxpbmUgcG9pbnRzPSI5IDIyIDkgMTIgMTUgMTIgMTUgMjIiLz48L3N2Zz4=";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [hasLogoError, setHasLogoError] = useState(false);
+  const [logoLoaded, setLogoLoaded] = useState(false);
+  const [logoError, setLogoError] = useState(false);
   
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
 
-  const handleLogoError = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    // Only switch to fallback once
-    if (!hasLogoError) {
-      console.log('Logo failed to load, using fallback');
-      e.currentTarget.src = FALLBACK_IMAGE;
-      setHasLogoError(true);
-    }
+  const handleLogoLoad = () => {
+    setLogoLoaded(true);
+  };
+
+  const handleLogoError = () => {
+    console.log('Logo failed to load, using built-in fallback');
+    setLogoError(true);
   };
 
   return (
@@ -30,19 +32,28 @@ const Navbar = () => {
         <div className="flex justify-between h-16 items-center">
           <div className="flex-shrink-0 flex items-center">
             <Link to="/" className="flex items-center space-x-3">
-              <div className="relative h-10 w-10">
-                {hasLogoError && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded">
-                    <ImageOff className="h-6 w-6 text-gray-400" />
+              <div className="relative h-10 w-10 flex items-center justify-center">
+                {/* Fallback logo (data URI - always works) */}
+                {logoError && (
+                  <div className="h-10 w-10 flex items-center justify-center text-primary">
+                    <img 
+                      src={DATA_URI_LOGO}
+                      alt="Doorways Logo"
+                      className="h-8 w-8"
+                    />
                   </div>
                 )}
-                <img 
-                  src={MAIN_LOGO}
-                  alt="Doorways Logo"
-                  loading="eager"
-                  className="h-10 w-10 object-contain"
-                  onError={handleLogoError}
-                />
+                
+                {/* Main logo attempt - hidden if error occurs */}
+                {!logoError && (
+                  <img 
+                    src="https://placehold.co/40x40/5700B3/FFFFFF?text=D"
+                    alt="Doorways Logo"
+                    className="h-10 w-10 object-contain rounded-md"
+                    onLoad={handleLogoLoad}
+                    onError={handleLogoError}
+                  />
+                )}
               </div>
               <span className="text-2xl font-bold text-primary">Doorways</span>
             </Link>
