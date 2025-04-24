@@ -19,7 +19,6 @@ export default {
     },
     extend: {
       colors: {
-        // Update primary colors to yellow and black
         primary: {
           DEFAULT: '#FFC200',
           dark: '#000000',
@@ -33,12 +32,16 @@ export default {
           foreground: '#FFC200'
         },
         background: {
-          DEFAULT: '#FFFFFF',
-          dark: '#000000'
+          DEFAULT: '#0F0F0F',  // Dark background inspired by modern design
+          dark: '#000000',
+          light: '#1A1A1A'
         },
         foreground: {
-          DEFAULT: '#000000',
-          light: '#FFC200'
+          DEFAULT: '#FFC200',
+          light: '#FFFFFF'
+        },
+        border: {
+          DEFAULT: '#333333'
         },
         border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',

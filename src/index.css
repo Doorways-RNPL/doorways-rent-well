@@ -5,8 +5,8 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 0%;
+    --background: 240 10% 3.9%;
+    --foreground: 48 100% 50%;
     --primary: 48 100% 50%;
     --primary-foreground: 0 0% 0%;
     --secondary: 0 0% 0%;
@@ -26,3 +26,4 @@
     @apply bg-background text-foreground;
   }
 }
+
