@@ -14,9 +14,31 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate password match
+    if (password !== confirmPassword) {
+      toast({
+        variant: "destructive",
+        title: "Password Mismatch",
+        description: "Passwords do not match. Please try again.",
+      });
+      return;
+    }
+
+    // Validate password strength
+    if (password.length < 6) {
+      toast({
+        variant: "destructive",
+        title: "Weak Password",
+        description: "Password must be at least 6 characters long.",
+      });
+      return;
+    }
+
     setLoading(true);
     
     const { error } = await supabase.auth.signUp({
@@ -32,9 +54,13 @@ export default function AuthPage() {
       });
     } else {
       toast({
-        title: "Verification email sent",
-        description: "Please check your email to verify your account",
+        title: "Account Created",
+        description: "You can now log in with your new account",
       });
+      // Reset form and switch to login tab
+      setEmail("");
+      setPassword("");
+      setConfirmPassword("");
     }
     setLoading(false);
   };
@@ -121,6 +147,15 @@ export default function AuthPage() {
                       placeholder="Password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Input
+                      type="password"
+                      placeholder="Confirm Password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
                       required
                     />
                   </div>
