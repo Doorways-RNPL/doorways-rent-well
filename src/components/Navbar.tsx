@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { Menu, X, ImageOff } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 
 // Define a local fallback image that's guaranteed to work
 // We'll use a data URI for immediate availability with no network dependency
@@ -44,10 +44,10 @@ const Navbar = () => {
                   </div>
                 )}
                 
-                {/* Main logo attempt - hidden if error occurs */}
+                {/* Main logo (using uploaded SVG) */}
                 {!logoError && (
                   <img 
-                    src="https://placehold.co/40x40/5700B3/FFFFFF?text=D"
+                    src="/lovable-uploads/fcea98fc-fc7e-498e-92eb-f1631063dfdb.png"
                     alt="Doorways Logo"
                     className="h-10 w-10 object-contain rounded-md"
                     onLoad={handleLogoLoad}
