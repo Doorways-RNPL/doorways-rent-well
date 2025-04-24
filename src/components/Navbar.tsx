@@ -1,16 +1,29 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 
-// Using a more reliable approach for the logo
-const logoUrl = "https://lovable-uploads.s3.amazonaws.com/53350b8e-5dd6-415e-9124-93bf1de175ff.png";
+// Fallback placeholder images
+const PLACEHOLDER_IMAGES = [
+  "https://via.placeholder.com/40",
+  "https://images.unsplash.com/photo-1488590528505-98d2b5aba04b/40x40",
+  "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d/40x40"
+];
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [logoSrc, setLogoSrc] = useState("https://lovable-uploads.s3.amazonaws.com/53350b8e-5dd6-415e-9124-93bf1de175ff.png");
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
+  };
+
+  const handleLogoError = () => {
+    // Cycle through placeholder images if logo fails to load
+    const currentIndex = PLACEHOLDER_IMAGES.indexOf(logoSrc);
+    const nextIndex = (currentIndex + 1) % PLACEHOLDER_IMAGES.length;
+    setLogoSrc(PLACEHOLDER_IMAGES[nextIndex]);
   };
 
   return (
@@ -20,13 +33,10 @@ const Navbar = () => {
           <div className="flex-shrink-0 flex items-center">
             <Link to="/" className="flex items-center space-x-3">
               <img 
-                src={logoUrl} 
+                src={logoSrc} 
                 alt="Doorways Logo" 
                 className="h-10 w-10 object-contain"
-                onError={(e) => {
-                  e.currentTarget.onerror = null;
-                  e.currentTarget.src = "https://via.placeholder.com/40";
-                }}
+                onError={handleLogoError}
               />
               <span className="text-2xl font-bold text-primary">Doorways</span>
             </Link>
