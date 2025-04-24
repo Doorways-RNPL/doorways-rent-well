@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
+import logoImage from '/lovable-uploads/53350b8e-5dd6-415e-9124-93bf1de175ff.png';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -16,7 +17,12 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           <div className="flex-shrink-0 flex items-center">
-            <Link to="/" className="flex items-center">
+            <Link to="/" className="flex items-center space-x-3">
+              <img 
+                src={logoImage} 
+                alt="Doorways Logo" 
+                className="h-10 w-10 object-contain"
+              />
               <span className="text-2xl font-bold text-primary">Doorways</span>
             </Link>
           </div>
