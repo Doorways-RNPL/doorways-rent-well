@@ -4,6 +4,7 @@ import { DeviceFrame } from './DeviceFrame';
 import { Button } from "@/components/ui/button";
 import { Laptop, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { 
   Carousel, 
   CarouselContent, 
