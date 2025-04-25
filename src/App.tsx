@@ -8,6 +8,8 @@ import { AuthProvider } from "@/components/AuthProvider";
 import Index from "./pages/Index";
 import About from "./pages/About";
 import HowItWorksPage from "./pages/HowItWorksPage";
+import LandlordsPage from "./pages/LandlordsPage";
+import TenantsPage from "./pages/TenantsPage";
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/AuthPage";
 import TenantSignup from "./pages/tenant/TenantSignup";
@@ -27,6 +29,8 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/about" element={<About />} />
             <Route path="/how-it-works" element={<HowItWorksPage />} />
+            <Route path="/landlords" element={<LandlordsPage />} />
+            <Route path="/tenants" element={<TenantsPage />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/apply" element={<TenantSignup />} />
             <Route path="/tenant/application" element={<TenantApplication />} />
