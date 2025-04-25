@@ -43,28 +43,26 @@ const LandlordDashboard = () => {
           .select('id', { count: 'exact' })
           .eq('landlord_id', landlordData.id);
 
-        // Get active applications count
+        // Get property IDs for this landlord
+        const { data: propertiesData } = await supabase
+          .from('properties')
+          .select('id')
+          .eq('landlord_id', landlordData.id);
+          
+        const propertyIds = propertiesData ? propertiesData.map(prop => prop.id) : [];
+
+        // Get active applications count - Using the propertyIds array
         const { count: applicationsCount } = await supabase
           .from('tenant_applications')
           .select('id', { count: 'exact' })
-          .in('property_id', 
-            supabase
-              .from('properties')
-              .select('id')
-              .eq('landlord_id', landlordData.id)
-          )
+          .in('property_id', propertyIds)
           .eq('status', 'pending');
 
-        // Get active leases count
+        // Get active leases count - Using the propertyIds array
         const { count: leasesCount } = await supabase
           .from('tenants')
           .select('id', { count: 'exact' })
-          .in('property_id',
-            supabase
-              .from('properties')
-              .select('id')
-              .eq('landlord_id', landlordData.id)
-          )
+          .in('property_id', propertyIds)
           .eq('is_active', true);
 
         setStats({
