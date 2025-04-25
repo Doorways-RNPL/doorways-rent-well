@@ -192,11 +192,11 @@ const Hero = () => {
           <div className="hidden md:block relative">
             <img
               src="/lovable-uploads/186c9a9d-8021-4de0-a5d7-b56ac22e40a1.png"
-              alt="Couple sitting on couch looking at phone"
-              className="rounded-lg w-full object-cover shadow-2xl"
+              alt="Line drawing of a couple sitting on couch looking at phone"
+              className="rounded-lg w-full object-contain bg-white/5 shadow-2xl"
               style={{ height: '600px' }}
             />
-            <div className="absolute inset-0 rounded-lg bg-gradient-to-t from-background/80 to-transparent"></div>
+            <div className="absolute inset-0 rounded-lg bg-gradient-to-t from-background/80 via-background/20 to-transparent"></div>
           </div>
         </div>
       </div>
