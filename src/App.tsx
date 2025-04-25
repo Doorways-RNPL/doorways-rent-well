@@ -15,6 +15,9 @@ import AuthPage from "./pages/AuthPage";
 import TenantSignup from "./pages/tenant/TenantSignup";
 import TenantApplication from "./pages/tenant/TenantApplication";
 import TenantDashboard from "./pages/tenant/TenantDashboard";
+import LandlordSignup from "./pages/landlord/LandlordSignup";
+import LandlordDashboard from "./pages/landlord/LandlordDashboard";
+import PropertyWizard from "./pages/landlord/PropertyWizard";
 
 const queryClient = new QueryClient();
 
@@ -35,8 +38,14 @@ const App = () => (
             <Route path="/apply" element={<TenantSignup />} />
             <Route path="/tenant/application" element={<TenantApplication />} />
             <Route path="/tenant/dashboard" element={<TenantDashboard />} />
+            
+            {/* Landlord routes */}
+            <Route path="/landlord/signup" element={<LandlordSignup />} />
+            <Route path="/landlord/dashboard" element={<LandlordDashboard />} />
+            <Route path="/landlord/property/new" element={<PropertyWizard />} />
+            
             {/* Add route for landlord's property listing */}
-            <Route path="/list-property" element={<TenantSignup />} />
+            <Route path="/list-property" element={<LandlordSignup />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

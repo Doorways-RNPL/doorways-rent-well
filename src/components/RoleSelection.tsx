@@ -48,7 +48,7 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
         }
       } else {
         // For landlords
-        navigate("/list-property");
+        navigate("/landlord/signup");
       }
       
       setIsLoading(false);

@@ -15,7 +15,7 @@ const CTASection = () => {
             Join thousands of property owners who've increased their rental income and reduced vacancies with Doorways.
           </p>
           <Button size="lg" asChild className="px-8 py-6 text-lg">
-            <Link to="/list-property">List Your Property</Link>
+            <Link to="/landlord/signup">List Your Property</Link>
           </Button>
         </div>
       </div>
