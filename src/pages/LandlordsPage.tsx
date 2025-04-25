@@ -1,3 +1,4 @@
+
 import React from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -12,9 +13,13 @@ import {
   DollarSign,
   Lock,
   MessageSquare,
-  Support,
   TrendingUp,
-  Users 
+  Users,
+  HeadphonesIcon,
+  BuildingIcon,
+  CalendarIcon,
+  CreditCardIcon,
+  PercentIcon
 } from "lucide-react";
 import {
   Carousel,
@@ -76,25 +81,25 @@ const LandlordsPage = () => {
             
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
               <StatisticCard
-                icon={<Building className="h-6 w-6" />}
+                icon={<BuildingIcon className="h-6 w-6" />}
                 value="100%"
                 label="Occupancy Rate"
                 description="Maintain full occupancy with our tenant matching system"
               />
               <StatisticCard
-                icon={<Calendar className="h-6 w-6" />}
+                icon={<CalendarIcon className="h-6 w-6" />}
                 value="14 Days"
                 label="Average Fill Time"
                 description="Find pre-qualified tenants for your properties faster"
               />
               <StatisticCard
-                icon={<CreditCard className="h-6 w-6" />}
+                icon={<CreditCardIcon className="h-6 w-6" />}
                 value="100%"
                 label="Payment Guarantee"
                 description="Receive your rent payments on time, every time"
               />
               <StatisticCard
-                icon={<Percent className="h-6 w-6" />}
+                icon={<PercentIcon className="h-6 w-6" />}
                 value="24%"
                 label="Higher Returns"
                 description="Increased annual returns compared to traditional rentals"
@@ -148,7 +153,7 @@ const LandlordsPage = () => {
                   description: "Consistently participating landlords can be marked as 'Preferred' or 'Top Rated'. Their properties get priority visibility to high-quality tenants.",
                 },
                 {
-                  icon: <Support className="h-8 w-8 text-primary" />,
+                  icon: <HeadphonesIcon className="h-8 w-8 text-primary" />,
                   title: "Support for Growth",
                   description: "RNPL opens the door for portfolio landlords and developers to lease faster and at scale. Ideal for off-plan or newly completed projects.",
                 },
