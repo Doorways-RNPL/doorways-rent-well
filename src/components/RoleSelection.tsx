@@ -42,6 +42,23 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
           throw new Error("No authenticated user found");
         }
 
+        // First check if a landlord profile already exists
+        const { data: existingLandlord, error: checkError } = await supabase
+          .from('landlords')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+          throw checkError;
+        }
+
+        if (existingLandlord) {
+          // Landlord profile exists, redirect to dashboard
+          navigate("/landlord/dashboard");
+          return;
+        }
+
         const firstName = localStorage.getItem("tenant-firstName") || "";
         const lastName = localStorage.getItem("tenant-lastName") || "";
         
@@ -49,7 +66,7 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
           email: email,
           first_name: firstName,
           last_name: lastName,
-          user_id: user.id // Explicitly set the user_id to match auth.uid()
+          user_id: user.id
         });
 
         if (profileError) {
