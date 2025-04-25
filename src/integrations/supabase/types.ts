@@ -48,26 +48,44 @@ export type Database = {
       properties: {
         Row: {
           address: string
+          amenities: Json | null
+          bathrooms: number | null
+          bedrooms: number | null
           city: string
           created_at: string | null
+          description: string | null
           id: string
           landlord_id: string | null
+          property_type: string | null
+          rent_amount: number | null
           updated_at: string | null
         }
         Insert: {
           address: string
+          amenities?: Json | null
+          bathrooms?: number | null
+          bedrooms?: number | null
           city: string
           created_at?: string | null
+          description?: string | null
           id?: string
           landlord_id?: string | null
+          property_type?: string | null
+          rent_amount?: number | null
           updated_at?: string | null
         }
         Update: {
           address?: string
+          amenities?: Json | null
+          bathrooms?: number | null
+          bedrooms?: number | null
           city?: string
           created_at?: string | null
+          description?: string | null
           id?: string
           landlord_id?: string | null
+          property_type?: string | null
+          rent_amount?: number | null
           updated_at?: string | null
         }
         Relationships: [
@@ -76,6 +94,41 @@ export type Database = {
             columns: ["landlord_id"]
             isOneToOne: false
             referencedRelation: "landlords"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_images: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_primary: boolean | null
+          property_id: string | null
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_primary?: boolean | null
+          property_id?: string | null
+          storage_path: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_primary?: boolean | null
+          property_id?: string | null
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_images_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
             referencedColumns: ["id"]
           },
         ]
