@@ -192,10 +192,10 @@ const Hero = () => {
             <img
               src="/lovable-uploads/b29eafba-7c9c-45c5-983a-79f2ab8cc8e1.png"
               alt="Line drawing of a couple sitting on couch looking at their phone together"
-              className="rounded-lg w-full object-contain bg-white/5 shadow-2xl"
+              className="rounded-lg w-full object-contain"
               style={{ height: '600px' }}
             />
-            <div className="absolute inset-0 rounded-lg bg-gradient-to-t from-background/80 via-background/20 to-transparent"></div>
+            <div className="absolute inset-0 rounded-lg bg-gradient-to-t from-background/90 via-background/20 to-transparent"></div>
           </div>
         </div>
       </div>
