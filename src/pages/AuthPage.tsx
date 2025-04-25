@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,7 +9,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import RoleSelection from "@/components/RoleSelection";
 import { BreadcrumbNav } from "@/components/ui/breadcrumb-nav";
-import { Eye, EyeOff, Mail, Lock } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function AuthPage() {
@@ -19,6 +18,8 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -27,7 +28,6 @@ export default function AuthPage() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate password match
     if (password !== confirmPassword) {
       toast({
         variant: "destructive",
@@ -37,7 +37,6 @@ export default function AuthPage() {
       return;
     }
 
-    // Validate password strength
     if (password.length < 6) {
       toast({
         variant: "destructive",
@@ -49,25 +48,38 @@ export default function AuthPage() {
 
     setLoading(true);
     
-    const { error } = await supabase.auth.signUp({
+    const { error: signUpError, data: signUpData } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        data: {
+          first_name: firstName,
+          last_name: lastName,
+        }
+      }
     });
 
-    if (error) {
+    if (signUpError) {
       toast({
         variant: "destructive",
         title: "Error signing up",
-        description: error.message,
+        description: signUpError.message,
       });
       setLoading(false);
-    } else {
-      toast({
-        title: "Account Created Successfully",
-        description: "Please select how you'd like to use Doorways.",
-      });
-      setAuthCompleted(true);
+      return;
     }
+
+    // Store in localStorage for RoleSelection component
+    localStorage.setItem("tenant-email", email);
+    localStorage.setItem("tenant-firstName", firstName);
+    localStorage.setItem("tenant-lastName", lastName);
+
+    toast({
+      title: "Account Created Successfully",
+      description: "Please select how you'd like to use Doorways.",
+    });
+    setAuthCompleted(true);
+    setLoading(false);
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -181,6 +193,38 @@ export default function AuthPage() {
                 <TabsContent value="signup">
                   <CardContent>
                     <form onSubmit={handleSignUp} className="space-y-5">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <div className="relative">
+                            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground">
+                              <User className="h-5 w-5" />
+                            </div>
+                            <Input
+                              type="text"
+                              placeholder="First name"
+                              value={firstName}
+                              onChange={(e) => setFirstName(e.target.value)}
+                              className="pl-10"
+                              required
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="relative">
+                            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground">
+                              <User className="h-5 w-5" />
+                            </div>
+                            <Input
+                              type="text"
+                              placeholder="Last name"
+                              value={lastName}
+                              onChange={(e) => setLastName(e.target.value)}
+                              className="pl-10"
+                              required
+                            />
+                          </div>
+                        </div>
+                      </div>
                       <div className="space-y-1">
                         <div className="relative">
                           <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground">

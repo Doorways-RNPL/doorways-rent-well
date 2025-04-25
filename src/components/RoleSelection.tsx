@@ -1,10 +1,10 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { User, Home } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface RoleSelectionProps {
   email?: string;
@@ -21,7 +21,7 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
     setSelectedRole(role);
   };
   
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!selectedRole) {
       toast({
         title: "Please select a role",
@@ -36,24 +36,44 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
     // Store role selection
     localStorage.setItem("user-role", selectedRole);
     
-    // Navigate based on role
-    setTimeout(() => {
-      if (selectedRole === "tenant") {
-        // If email exists, we assume the user already created an account
+    try {
+      if (selectedRole === "landlord") {
+        // Create landlord profile in Supabase
+        const firstName = localStorage.getItem("tenant-firstName") || "";
+        const lastName = localStorage.getItem("tenant-lastName") || "";
+        
+        const { error: profileError } = await supabase.from('landlords').insert({
+          email: email,
+          first_name: firstName,
+          last_name: lastName,
+          user_id: (await supabase.auth.getUser()).data.user?.id
+        });
+
+        if (profileError) {
+          throw profileError;
+        }
+
+        navigate("/landlord/property/new");
+      } else {
+        // For tenants, keep existing flow
         if (email) {
           localStorage.setItem("tenant-email", email);
           navigate("/tenant/application");
         } else {
           navigate("/apply");
         }
-      } else {
-        // For landlords
-        navigate("/landlord/signup");
       }
       
-      setIsLoading(false);
       if (onComplete) onComplete();
-    }, 500);
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error setting up profile",
+        description: error.message
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   return (

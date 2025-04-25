@@ -7,7 +7,6 @@ import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-// This is a placeholder for the property listing wizard that will be implemented in Phase 2
 const PropertyWizard = () => {
   const { user, isLoading } = useAuth();
   const [step, setStep] = useState(1);
@@ -25,22 +24,30 @@ const PropertyWizard = () => {
       <Navbar />
       <main className="container mx-auto px-4 pt-24 pb-16">
         <div className="max-w-2xl mx-auto">
-          <h1 className="text-3xl font-bold text-primary mb-6 text-center">Add Your Property</h1>
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-primary mb-2">Welcome to Doorways</h1>
+            <p className="text-white/70">Let's get started by adding your first property listing.</p>
+          </div>
+
           <Card>
             <CardHeader>
-              <CardTitle>Property Listing Wizard</CardTitle>
-              <CardDescription>Coming in Phase 2</CardDescription>
+              <CardTitle>Add Your First Property</CardTitle>
+              <CardDescription>Start by providing basic property details</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-white/70">
-                This wizard will guide you through the process of adding a new property listing.
+                This wizard will guide you through the process of adding your first property listing.
+                You'll be able to:
               </p>
-              <p className="text-white/70">
-                You'll be able to add property details, upload images, set rental terms, and more.
-              </p>
+              <ul className="list-disc list-inside text-white/70 space-y-1">
+                <li>Add property details and specifications</li>
+                <li>Upload property images</li>
+                <li>Set rental terms and conditions</li>
+                <li>Specify tenant requirements</li>
+              </ul>
               <div className="flex justify-end">
                 <Button type="button" onClick={() => window.location.href = "/landlord/dashboard"}>
-                  Go to Dashboard
+                  Start Now
                 </Button>
               </div>
             </CardContent>

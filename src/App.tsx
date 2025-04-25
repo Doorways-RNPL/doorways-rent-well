@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,7 +14,6 @@ import AuthPage from "./pages/AuthPage";
 import TenantSignup from "./pages/tenant/TenantSignup";
 import TenantApplication from "./pages/tenant/TenantApplication";
 import TenantDashboard from "./pages/tenant/TenantDashboard";
-import LandlordSignup from "./pages/landlord/LandlordSignup";
 import LandlordDashboard from "./pages/landlord/LandlordDashboard";
 import PropertyWizard from "./pages/landlord/PropertyWizard";
 
@@ -40,13 +38,10 @@ const App = () => (
             <Route path="/tenant/dashboard" element={<TenantDashboard />} />
             
             {/* Landlord routes */}
-            <Route path="/landlord/signup" element={<LandlordSignup />} />
             <Route path="/landlord/dashboard" element={<LandlordDashboard />} />
             <Route path="/landlord/property/new" element={<PropertyWizard />} />
             
-            {/* Add route for landlord's property listing */}
-            <Route path="/list-property" element={<LandlordSignup />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            {/* Remove the LandlordSignup route since we're not using it anymore */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
