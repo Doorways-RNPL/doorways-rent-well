@@ -3,11 +3,19 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { DevicePreview } from "@/components/shared/DevicePreview";
 import { StatisticCard } from "@/components/shared/StatisticCard";
 import { TestimonialCard } from "@/components/shared/TestimonialCard";
 import { FAQAccordion } from "@/components/shared/FAQAccordion";
-import { Building, Calendar, CreditCard, Home, Percent, PieChart, Users } from "lucide-react";
+import { 
+  Award,
+  BarChart2,
+  DollarSign,
+  Lock,
+  MessageSquare,
+  Support,
+  TrendingUp,
+  Users 
+} from "lucide-react";
 import {
   Carousel,
   CarouselContent,
@@ -17,25 +25,6 @@ import {
 } from "@/components/ui/carousel";
 
 const LandlordsPage = () => {
-  // Dashboard screenshots for device previews
-  const laptopScreenshots = [
-    // Property Management Dashboard
-    "https://res.cloudinary.com/dq6scg5pr/image/upload/v1709590316/desktop-dashboard_yrrdbr.png",
-    // Tenant Screening Interface
-    "https://res.cloudinary.com/dq6scg5pr/image/upload/v1709590316/desktop-tenant-screening_wfrhxz.png",
-    // Payment Tracking Screen
-    "https://res.cloudinary.com/dq6scg5pr/image/upload/v1709590316/desktop-payments_kxqz9m.png",
-  ];
-
-  const phoneScreenshots = [
-    // Mobile Property Management
-    "https://res.cloudinary.com/dq6scg5pr/image/upload/v1709590316/mobile-dashboard_lzyjbe.png",
-    // Mobile Tenant Screening
-    "https://res.cloudinary.com/dq6scg5pr/image/upload/v1709590316/mobile-tenant-screening_nwdqpu.png",
-    // Mobile Payment Tracking
-    "https://res.cloudinary.com/dq6scg5pr/image/upload/v1709590316/mobile-payments_qxvf8p.png",
-  ];
-
   // FAQ data
   const faqItems = [
     {
@@ -74,13 +63,6 @@ const LandlordsPage = () => {
               <p className="text-xl text-white/70">
                 List your properties, find reliable tenants, and receive guaranteed monthly payments with our Rent Now, Pay Later solution.
               </p>
-            </div>
-
-            <div className="mt-16">
-              <DevicePreview
-                laptopScreenshots={laptopScreenshots}
-                phoneScreenshots={phoneScreenshots}
-              />
             </div>
           </div>
         </section>
@@ -125,40 +107,50 @@ const LandlordsPage = () => {
         <section className="py-20">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="text-3xl md:text-4xl font-bold text-primary mb-12 text-center">
-              Powerful Tools for Property Owners
+              Powerful Tools for Landlords
             </h2>
             
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
               {[
                 {
-                  icon: <Home className="h-8 w-8 text-primary" />,
-                  title: "Property Management",
-                  description: "Easily add and manage multiple properties from a single dashboard with detailed analytics and insights.",
+                  icon: <Lock className="h-8 w-8 text-primary" />,
+                  title: "Reliable, On-Time Payments",
+                  description: "Get paid every month without chasing tenants. Payments are guaranteed through the RNPL model with lower default risk due to tenant vetting and reward incentives.",
+                },
+                {
+                  icon: <TrendingUp className="h-8 w-8 text-primary" />,
+                  title: "Fill Vacancies Faster",
+                  description: "Attract a broader pool of renters, including reliable but cash-constrained tenants. Higher occupancy means better rental yield and asset performance.",
                 },
                 {
                   icon: <Users className="h-8 w-8 text-primary" />,
-                  title: "Tenant Screening",
-                  description: "Access comprehensive tenant screening reports including credit, background, and rental history verification.",
+                  title: "Pre-Vetted Tenants",
+                  description: "All RNPL applicants are screened for risk using employment, lease, and payment history. View a scorecard with supporting documents before accepting a tenant.",
                 },
                 {
-                  icon: <CreditCard className="h-8 w-8 text-primary" />,
-                  title: "Guaranteed Payments",
-                  description: "Receive rent payments on schedule, regardless of when the tenant pays their flexible installments.",
+                  icon: <BarChart2 className="h-8 w-8 text-primary" />,
+                  title: "Less Admin, More Control",
+                  description: "List properties in minutes, invite tenants via shareable links, track payment history, and reduce back-and-forth via clear tenant status updates.",
                 },
                 {
-                  icon: <Calendar className="h-8 w-8 text-primary" />,
-                  title: "Maintenance Requests",
-                  description: "Streamline maintenance communication and tracking through our integrated request system.",
+                  icon: <MessageSquare className="h-8 w-8 text-primary" />,
+                  title: "Tenant Engagement Tools",
+                  description: "Send reminders or announcements via platform. Chat function and status badges improve communication without needing WhatsApp or SMS.",
                 },
                 {
-                  icon: <PieChart className="h-8 w-8 text-primary" />,
-                  title: "Financial Reporting",
-                  description: "Generate detailed financial reports for income tracking, tax purposes, and property performance.",
+                  icon: <DollarSign className="h-8 w-8 text-primary" />,
+                  title: "Data-Driven Insights",
+                  description: "Visual dashboards show monthly collections, occupancy trends, and unit performance. Export reports for tax, accounting, or performance tracking.",
                 },
                 {
-                  icon: <Building className="h-8 w-8 text-primary" />,
-                  title: "Market Insights",
-                  description: "Get data-driven recommendations on optimal pricing and amenities based on local market conditions.",
+                  icon: <Award className="h-8 w-8 text-primary" />,
+                  title: "Reputation Building & Priority Listing",
+                  description: "Consistently participating landlords can be marked as 'Preferred' or 'Top Rated'. Their properties get priority visibility to high-quality tenants.",
+                },
+                {
+                  icon: <Support className="h-8 w-8 text-primary" />,
+                  title: "Support for Growth",
+                  description: "RNPL opens the door for portfolio landlords and developers to lease faster and at scale. Ideal for off-plan or newly completed projects.",
                 },
               ].map((feature, index) => (
                 <div key={index} className="bg-white/5 border border-white/10 rounded-lg p-6">
