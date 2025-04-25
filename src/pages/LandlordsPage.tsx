@@ -19,15 +19,21 @@ import {
 const LandlordsPage = () => {
   // Dashboard screenshots for device previews
   const laptopScreenshots = [
-    "/lovable-uploads/fcea98fc-fc7e-498e-92eb-f1631063dfdb.png",
-    "/lovable-uploads/b29eafba-7c9c-45c5-983a-79f2ab8cc8e1.png",
-    "/lovable-uploads/186c9a9d-8021-4de0-a5d7-b56ac22e40a1.png",
+    // Property Management Dashboard
+    "https://res.cloudinary.com/dq6scg5pr/image/upload/v1709590316/desktop-dashboard_yrrdbr.png",
+    // Tenant Screening Interface
+    "https://res.cloudinary.com/dq6scg5pr/image/upload/v1709590316/desktop-tenant-screening_wfrhxz.png",
+    // Payment Tracking Screen
+    "https://res.cloudinary.com/dq6scg5pr/image/upload/v1709590316/desktop-payments_kxqz9m.png",
   ];
 
   const phoneScreenshots = [
-    "/lovable-uploads/fcea98fc-fc7e-498e-92eb-f1631063dfdb.png",
-    "/lovable-uploads/b29eafba-7c9c-45c5-983a-79f2ab8cc8e1.png",
-    "/lovable-uploads/186c9a9d-8021-4de0-a5d7-b56ac22e40a1.png",
+    // Mobile Property Management
+    "https://res.cloudinary.com/dq6scg5pr/image/upload/v1709590316/mobile-dashboard_lzyjbe.png",
+    // Mobile Tenant Screening
+    "https://res.cloudinary.com/dq6scg5pr/image/upload/v1709590316/mobile-tenant-screening_nwdqpu.png",
+    // Mobile Payment Tracking
+    "https://res.cloudinary.com/dq6scg5pr/image/upload/v1709590316/mobile-payments_qxvf8p.png",
   ];
 
   // FAQ data
