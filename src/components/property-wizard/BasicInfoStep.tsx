@@ -30,6 +30,18 @@ const BasicInfoStep = ({ onNext, initialData }: BasicInfoStepProps) => {
   const [bedrooms, setBedrooms] = useState(initialData?.bedrooms || 1);
   const [bathrooms, setBathrooms] = useState(initialData?.bathrooms || 1);
 
+  const propertyTypes: PropertyType[] = [
+    'house',
+    'townhouse',
+    'duplex',
+    'apartment',
+    'bachelor',
+    'cottage',
+    'flat',
+    'student accommodation',
+    'retirement village unit'
+  ];
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onNext({
@@ -48,7 +60,7 @@ const BasicInfoStep = ({ onNext, initialData }: BasicInfoStepProps) => {
           <div>
             <Label>Property Type</Label>
             <div className="grid grid-cols-2 gap-2 mt-2">
-              {(['house', 'apartment', 'condo', 'townhouse'] as PropertyType[]).map((type) => (
+              {propertyTypes.map((type) => (
                 <Card 
                   key={type}
                   className={`cursor-pointer transition-all ${

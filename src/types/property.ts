@@ -1,5 +1,13 @@
-
-export type PropertyType = 'house' | 'apartment' | 'condo' | 'townhouse';
+export type PropertyType = 
+  | 'house' 
+  | 'townhouse'
+  | 'duplex'
+  | 'apartment'
+  | 'bachelor'
+  | 'cottage'
+  | 'flat'
+  | 'student accommodation'
+  | 'retirement village unit';
 
 export interface PropertyFormData {
   property_type: PropertyType;
