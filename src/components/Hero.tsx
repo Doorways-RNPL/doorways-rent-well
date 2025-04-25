@@ -191,8 +191,8 @@ const Hero = () => {
 
           <div className="hidden md:block relative">
             <img
-              src="/lovable-uploads/photo-1721322800607-8c38375eef04.png"
-              alt="Living room with a couch and a table"
+              src="/lovable-uploads/186c9a9d-8021-4de0-a5d7-b56ac22e40a1.png"
+              alt="Couple sitting on couch looking at phone"
               className="rounded-lg w-full object-cover shadow-2xl"
               style={{ height: '600px' }}
             />
