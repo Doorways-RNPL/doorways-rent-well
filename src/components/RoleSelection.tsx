@@ -1,6 +1,7 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { User, Home } from "lucide-react";
@@ -33,12 +34,14 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
     
     setIsLoading(true);
     
-    // Store role selection
-    localStorage.setItem("user-role", selectedRole);
-    
     try {
       if (selectedRole === "landlord") {
-        // Create landlord profile in Supabase
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          throw new Error("No authenticated user found");
+        }
+
         const firstName = localStorage.getItem("tenant-firstName") || "";
         const lastName = localStorage.getItem("tenant-lastName") || "";
         
@@ -46,7 +49,7 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
           email: email,
           first_name: firstName,
           last_name: lastName,
-          user_id: (await supabase.auth.getUser()).data.user?.id
+          user_id: user.id // Explicitly set the user_id to match auth.uid()
         });
 
         if (profileError) {
@@ -55,7 +58,6 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
 
         navigate("/landlord/property/new");
       } else {
-        // For tenants, keep existing flow
         if (email) {
           localStorage.setItem("tenant-email", email);
           navigate("/tenant/application");
