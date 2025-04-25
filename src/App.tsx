@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/components/AuthProvider";
 import Index from "./pages/Index";
 import About from "./pages/About";
@@ -40,8 +40,11 @@ const App = () => (
             {/* Landlord routes */}
             <Route path="/landlord/dashboard" element={<LandlordDashboard />} />
             <Route path="/landlord/property/new" element={<PropertyWizard />} />
+            <Route path="/landlord/tenants" element={<Navigate to="/landlord/dashboard" replace />} />
+            <Route path="/landlord/applications" element={<Navigate to="/landlord/dashboard" replace />} />
+            <Route path="/landlord/payments" element={<Navigate to="/landlord/dashboard" replace />} />
+            <Route path="/landlord/settings" element={<Navigate to="/landlord/dashboard" replace />} />
             
-            {/* Remove the LandlordSignup route since we're not using it anymore */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
