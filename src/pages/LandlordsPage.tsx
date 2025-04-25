@@ -1,4 +1,3 @@
-
 import React from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -18,16 +17,16 @@ import {
 } from "@/components/ui/carousel";
 
 const LandlordsPage = () => {
-  // Mock data for device previews
+  // Dashboard screenshots for device previews
   const laptopScreenshots = [
-    "/lovable-uploads/186c9a9d-8021-4de0-a5d7-b56ac22e40a1.png",
-    "/lovable-uploads/186c9a9d-8021-4de0-a5d7-b56ac22e40a1.png",
+    "/lovable-uploads/fcea98fc-fc7e-498e-92eb-f1631063dfdb.png",
+    "/lovable-uploads/b29eafba-7c9c-45c5-983a-79f2ab8cc8e1.png",
     "/lovable-uploads/186c9a9d-8021-4de0-a5d7-b56ac22e40a1.png",
   ];
 
   const phoneScreenshots = [
-    "/lovable-uploads/186c9a9d-8021-4de0-a5d7-b56ac22e40a1.png",
-    "/lovable-uploads/186c9a9d-8021-4de0-a5d7-b56ac22e40a1.png",
+    "/lovable-uploads/fcea98fc-fc7e-498e-92eb-f1631063dfdb.png",
+    "/lovable-uploads/b29eafba-7c9c-45c5-983a-79f2ab8cc8e1.png",
     "/lovable-uploads/186c9a9d-8021-4de0-a5d7-b56ac22e40a1.png",
   ];
 

@@ -30,6 +30,9 @@ export function DevicePreview({
   
   const screenshots = deviceType === 'laptop' ? laptopScreenshots : phoneScreenshots;
 
+  // Check if screenshots array is empty
+  const hasScreenshots = screenshots && screenshots.length > 0;
+
   return (
     <div className={cn("flex flex-col items-center space-y-6", className)}>
       <div className="flex items-center justify-center space-x-2">
@@ -54,17 +57,47 @@ export function DevicePreview({
       <div className="w-full max-w-3xl">
         <Carousel>
           <CarouselContent>
-            {screenshots.map((screenshot, index) => (
-              <CarouselItem key={index}>
+            {hasScreenshots ? (
+              screenshots.map((screenshot, index) => (
+                <CarouselItem key={index}>
+                  <div className="p-1">
+                    {deviceType === 'laptop' ? (
+                      <DeviceFrame type="laptop">
+                        <AspectRatio ratio={16/10}>
+                          <img 
+                            src={screenshot} 
+                            alt={`Dashboard preview ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </AspectRatio>
+                      </DeviceFrame>
+                    ) : (
+                      <div className="flex justify-center">
+                        <div className="w-[50%]">
+                          <DeviceFrame type="phone">
+                            <AspectRatio ratio={9/16}>
+                              <img 
+                                src={screenshot} 
+                                alt={`Dashboard preview ${index + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+                            </AspectRatio>
+                          </DeviceFrame>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CarouselItem>
+              ))
+            ) : (
+              <CarouselItem>
                 <div className="p-1">
                   {deviceType === 'laptop' ? (
                     <DeviceFrame type="laptop">
                       <AspectRatio ratio={16/10}>
-                        <img 
-                          src={screenshot} 
-                          alt={`Dashboard preview ${index + 1}`}
-                          className="w-full h-full object-cover"
-                        />
+                        <div className="w-full h-full bg-gray-900 flex items-center justify-center text-primary p-6">
+                          <p className="text-center">Dashboard preview not available</p>
+                        </div>
                       </AspectRatio>
                     </DeviceFrame>
                   ) : (
@@ -72,11 +105,9 @@ export function DevicePreview({
                       <div className="w-[50%]">
                         <DeviceFrame type="phone">
                           <AspectRatio ratio={9/16}>
-                            <img 
-                              src={screenshot} 
-                              alt={`Dashboard preview ${index + 1}`}
-                              className="w-full h-full object-cover"
-                            />
+                            <div className="w-full h-full bg-gray-900 flex items-center justify-center text-primary p-6">
+                              <p className="text-center">Dashboard preview not available</p>
+                            </div>
                           </AspectRatio>
                         </DeviceFrame>
                       </div>
@@ -84,7 +115,7 @@ export function DevicePreview({
                   )}
                 </div>
               </CarouselItem>
-            ))}
+            )}
           </CarouselContent>
           <div className="flex justify-center mt-4">
             <CarouselPrevious className="relative -left-0 translate-y-0 position-static mr-2" />
