@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,6 +16,8 @@ import TenantSignup from "./pages/tenant/TenantSignup";
 import TenantApplication from "./pages/tenant/TenantApplication";
 import TenantDashboard from "./pages/tenant/TenantDashboard";
 import LandlordDashboard from "./pages/landlord/LandlordDashboard";
+import LandlordApplications from "./pages/landlord/LandlordApplications";
+import LandlordOffers from "./pages/landlord/LandlordOffers";
 import PropertyWizard from "./pages/landlord/PropertyWizard";
 
 const queryClient = new QueryClient();
@@ -40,8 +43,9 @@ const App = () => (
             {/* Landlord routes */}
             <Route path="/landlord/dashboard" element={<LandlordDashboard />} />
             <Route path="/landlord/property/new" element={<PropertyWizard />} />
+            <Route path="/landlord/applications" element={<LandlordApplications />} />
+            <Route path="/landlord/offers" element={<LandlordOffers />} />
             <Route path="/landlord/tenants" element={<Navigate to="/landlord/dashboard" replace />} />
-            <Route path="/landlord/applications" element={<Navigate to="/landlord/dashboard" replace />} />
             <Route path="/landlord/payments" element={<Navigate to="/landlord/dashboard" replace />} />
             <Route path="/landlord/settings" element={<Navigate to="/landlord/dashboard" replace />} />
             

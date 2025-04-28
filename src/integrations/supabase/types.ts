@@ -45,6 +45,57 @@ export type Database = {
         }
         Relationships: []
       }
+      offers: {
+        Row: {
+          created_at: string
+          external_reference: string | null
+          id: string
+          offer_details: Json | null
+          property_id: string
+          status: string
+          tenant_application_id: string
+          updated_at: string
+          whatsapp_link: string | null
+        }
+        Insert: {
+          created_at?: string
+          external_reference?: string | null
+          id?: string
+          offer_details?: Json | null
+          property_id: string
+          status?: string
+          tenant_application_id: string
+          updated_at?: string
+          whatsapp_link?: string | null
+        }
+        Update: {
+          created_at?: string
+          external_reference?: string | null
+          id?: string
+          offer_details?: Json | null
+          property_id?: string
+          status?: string
+          tenant_application_id?: string
+          updated_at?: string
+          whatsapp_link?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offers_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_tenant_application_id_fkey"
+            columns: ["tenant_application_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number

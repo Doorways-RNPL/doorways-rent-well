@@ -6,13 +6,14 @@ import DashboardLayout from "@/components/landlord/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { Home, Users, FileText } from "lucide-react";
+import { Home, Users, FileText, FileCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface DashboardStats {
   totalProperties: number;
   activeApplications: number;
   activeLeases: number;
+  pendingOffers: number;
 }
 
 const LandlordDashboard = () => {
@@ -21,7 +22,8 @@ const LandlordDashboard = () => {
   const [stats, setStats] = useState<DashboardStats>({
     totalProperties: 0,
     activeApplications: 0,
-    activeLeases: 0
+    activeLeases: 0,
+    pendingOffers: 0
   });
   const [isLoadingStats, setIsLoadingStats] = useState(true);
 
@@ -64,11 +66,19 @@ const LandlordDashboard = () => {
           .select('id', { count: 'exact' })
           .in('property_id', propertyIds)
           .eq('is_active', true);
+          
+        // Get pending offers count
+        const { count: pendingOffersCount } = await supabase
+          .from('offers')
+          .select('id', { count: 'exact' })
+          .in('property_id', propertyIds)
+          .eq('status', 'pending');
 
         setStats({
           totalProperties: propertiesCount || 0,
           activeApplications: applicationsCount || 0,
-          activeLeases: leasesCount || 0
+          activeLeases: leasesCount || 0,
+          pendingOffers: pendingOffersCount || 0
         });
       } catch (error: any) {
         toast({
@@ -104,7 +114,7 @@ const LandlordDashboard = () => {
           </p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
@@ -146,6 +156,20 @@ const LandlordDashboard = () => {
               </div>
             </CardContent>
           </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Pending Offers
+              </CardTitle>
+              <FileCheck className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {isLoadingStats ? "..." : stats.pendingOffers}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
@@ -159,6 +183,9 @@ const LandlordDashboard = () => {
               </Button>
               <Button variant="outline" onClick={() => window.location.href = "/landlord/applications"}>
                 View Applications
+              </Button>
+              <Button variant="outline" onClick={() => window.location.href = "/landlord/offers"}>
+                Manage Offers
               </Button>
             </CardContent>
           </Card>
