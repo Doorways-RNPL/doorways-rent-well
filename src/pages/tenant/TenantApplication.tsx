@@ -36,25 +36,21 @@ const TenantApplication = () => {
   const [isLoadingProperties, setIsLoadingProperties] = useState(true);
   
   const [applicationData, setApplicationData] = useState({
-    // Step 1: Personal info
     firstName: "",
     lastName: "",
     dateOfBirth: "",
     idNumber: "",
     
-    // Step 2: Address
     residenceType: "new" as 'current' | 'new',
     currentAddress: "",
     currentCity: "",
     moveInDate: "",
     
-    // Step 3: Employment
     employerName: "",
     jobTitle: "",
     monthlyIncome: "",
     
-    // Step 4: Lease details
-    propertyId: "", // Store property ID instead of address
+    propertyId: "",
     propertyAddress: "",
     propertyCity: "",
     monthlyRent: "",
@@ -64,18 +60,15 @@ const TenantApplication = () => {
     landlordEmail: "",
     landlordPhone: "",
     
-    // Step 5: Uploads
     idDocument: null as File | null,
     proofOfIncome: null as File | null,
     leaseAgreement: null as File | null,
     
-    // Step 6: Consent
     agreeToTerms: false,
     agreeToCredit: false,
     agreeToBackground: false,
   });
 
-  // Fetch available properties
   useEffect(() => {
     const fetchProperties = async () => {
       try {
@@ -102,7 +95,6 @@ const TenantApplication = () => {
     fetchProperties();
   }, [toast]);
 
-  // Check if user is logged in
   useEffect(() => {
     const email = localStorage.getItem("tenant-email");
     const firstName = localStorage.getItem("tenant-firstName");
@@ -199,7 +191,7 @@ const TenantApplication = () => {
         
       let tenantId;
         
-      if (tenantCheckError && tenantCheckError.code === 'PGRST116') {
+      if (!existingTenant && !tenantCheckError) {
         // No tenant record found, create one
         const { data: newTenant, error: createError } = await supabase
           .from('tenants')
@@ -217,11 +209,30 @@ const TenantApplication = () => {
           throw createError;
         }
         tenantId = newTenant?.id;
-      } else if (tenantCheckError) {
+      } else if (tenantCheckError && tenantCheckError.code !== 'PGRST116') { 
+        // PGRST116 is "no rows returned", which is fine - we'll create a tenant
         console.error("Error checking for existing tenant:", tenantCheckError);
         throw tenantCheckError;
+      } else if (existingTenant) {
+        tenantId = existingTenant.id;
       } else {
-        tenantId = existingTenant?.id;
+        // No tenant record found, create one
+        const { data: newTenant, error: createError } = await supabase
+          .from('tenants')
+          .insert({
+            first_name: applicationData.firstName,
+            last_name: applicationData.lastName,
+            email: user.email || localStorage.getItem("tenant-email") || '',
+            user_id: user.id
+          })
+          .select('id')
+          .single();
+          
+        if (createError) {
+          console.error("Error creating tenant record:", createError);
+          throw createError;
+        }
+        tenantId = newTenant?.id;
       }
       
       // Format employment info
