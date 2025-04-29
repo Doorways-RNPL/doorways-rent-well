@@ -106,16 +106,37 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
     try {
       setIsLoadingRole(true);
       
-      // Update or insert role in database
-      const { error } = await supabase
+      // First check if a role already exists for this user to prevent duplicate key errors
+      const { data: existingRole } = await supabase
         .from('user_roles')
-        .upsert({
-          user_id: user.id,
-          role: newRole
-        });
+        .select('id, role')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      let error;
+      
+      if (existingRole) {
+        // Update existing role
+        const result = await supabase
+          .from('user_roles')
+          .update({ role: newRole })
+          .eq('id', existingRole.id);
+          
+        error = result.error;
+      } else {
+        // Insert new role
+        const result = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: user.id,
+            role: newRole
+          });
+          
+        error = result.error;
+      }
 
       if (error) {
-        console.error("Upsert error:", error);
+        console.error("Error setting user role:", error);
         throw error;
       }
 
