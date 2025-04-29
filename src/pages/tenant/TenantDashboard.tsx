@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -56,6 +55,7 @@ const TenantDashboard = () => {
   const [isRecentlySubmitted, setIsRecentlySubmitted] = useState<boolean>(false);
   const [retryCount, setRetryCount] = useState(0);
   const [hasLocalApplication, setHasLocalApplication] = useState(false);
+  const [hasMultipleApplications, setHasMultipleApplications] = useState(false);
   
   // Handle rewards tier calculation
   const calculateRewardsTier = () => {
@@ -191,8 +191,8 @@ const TenantDashboard = () => {
         console.log("Tenant record found:", tenant);
         setTenantId(tenant.id);
 
-        // Fetch application data
-        const { data: application, error: applicationError } = await supabase
+        // Fetch application data - Get the most recent application instead of using maybeSingle
+        const { data: applications, error: applicationError, count } = await supabase
           .from('tenant_applications')
           .select(`
             *,
@@ -204,7 +204,7 @@ const TenantDashboard = () => {
           `)
           .eq('tenant_id', tenant.id)
           .order('created_at', { ascending: false })
-          .maybeSingle();
+          .limit(1);
 
         if (applicationError) {
           console.error("Error fetching application:", applicationError);
@@ -244,7 +244,23 @@ const TenantDashboard = () => {
           return;
         }
 
-        if (!application) {
+        // Check how many applications this tenant has
+        const { count: totalApplications } = await supabase
+          .from('tenant_applications')
+          .select('id', { count: 'exact' })
+          .eq('tenant_id', tenant.id);
+        
+        if (totalApplications !== undefined && totalApplications > 1) {
+          console.log(`Found ${totalApplications} applications for this tenant`);
+          setHasMultipleApplications(true);
+          toast({
+            title: "Multiple applications found",
+            description: "Showing your most recent application.",
+            duration: 5000,
+          });
+        }
+
+        if (!applications || applications.length === 0) {
           // Check if we have a local application that hasn't been found yet
           if (isRecentlySubmitted && hasLocalApplication && retryCount < 3) {
             console.log("Recently submitted application not found in database, retrying...");
@@ -284,8 +300,8 @@ const TenantDashboard = () => {
           return;
         }
 
-        console.log("Application data retrieved:", application);
-        setApplicationData(application as ApplicationData);
+        console.log("Application data retrieved:", applications[0]);
+        setApplicationData(applications[0] as ApplicationData);
       } catch (error: any) {
         console.error("Error fetching tenant data:", error);
         setError(`Error loading tenant data: ${error.message}`);
@@ -316,8 +332,9 @@ const TenantDashboard = () => {
         }, (payload) => {
           console.log('Application updated:', payload);
           
-          // Update application data with the new status
-          if (payload.new) {
+          // Since we now might have multiple applications, make sure we're
+          // updating the correct one by checking the ID
+          if (payload.new && applicationData && payload.new.id === applicationData.id) {
             setApplicationData(prevData => {
               if (!prevData) return payload.new as ApplicationData;
               return { ...prevData, ...payload.new };
@@ -358,7 +375,7 @@ const TenantDashboard = () => {
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [navigate, toast, user, tenantId, authLoading, isLoadingRole, role, setRole, retryCount, isRecentlySubmitted, hasLocalApplication]);
+  }, [navigate, toast, user, tenantId, authLoading, isLoadingRole, role, setRole, retryCount, isRecentlySubmitted, hasLocalApplication, applicationData]);
 
   // Get status badge styling
   const getStatusBadge = () => {
@@ -460,6 +477,11 @@ const TenantDashboard = () => {
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-primary mb-4">Tenant Dashboard</h1>
             <p className="text-white/70">Welcome back, {applicationData?.tenant_first_name || "Tenant"}</p>
+            {hasMultipleApplications && (
+              <div className="mt-2 text-sm text-amber-400 bg-amber-400/10 p-2 rounded-md inline-block">
+                <Info size={14} className="inline mr-1" /> You have multiple applications in our system. Showing your most recent one.
+              </div>
+            )}
           </div>
 
           {/* Debug info during development */}

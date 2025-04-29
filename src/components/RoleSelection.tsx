@@ -48,7 +48,20 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
         if (tenantData) {
           console.log("Existing tenant profile found, redirecting to dashboard");
           await setRole("tenant");
-          navigate(redirectPath || '/tenant/dashboard');
+          
+          // Check if tenant has a recent application before redirecting
+          const { data: applications, count } = await supabase
+            .from('tenant_applications')
+            .select('id', { count: 'exact' })
+            .eq('tenant_id', tenantData.id)
+            .limit(1);
+            
+          if (count && count > 0) {
+            navigate(redirectPath || '/tenant/dashboard');
+          } else {
+            // No applications yet, redirect to application page
+            navigate('/tenant/application');
+          }
           return;
         }
         
