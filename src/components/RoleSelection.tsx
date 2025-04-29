@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { User, Home } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "./UserRoleProvider";
+import { useAuth } from "./AuthProvider";
 
 interface RoleSelectionProps {
   email?: string;
@@ -17,6 +18,7 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { setRole } = useUserRole();
+  const { user } = useAuth();
   const [selectedRole, setSelectedRole] = useState<"tenant" | "landlord" | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   
@@ -37,22 +39,20 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
     setIsLoading(true);
     
     try {
+      if (!user) {
+        throw new Error("No authenticated user found");
+      }
+
+      // Set user role in the global context
+      await setRole(selectedRole);
+
       if (selectedRole === "landlord") {
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (!user) {
-          throw new Error("No authenticated user found");
-        }
-
-        // Set user role in the global context
-        await setRole("landlord");
-
         // First check if a landlord profile already exists
         const { data: existingLandlord, error: checkError } = await supabase
           .from('landlords')
           .select('id')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
         if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "no rows returned"
           throw checkError;
@@ -68,7 +68,7 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
         const lastName = localStorage.getItem("tenant-lastName") || "";
         
         const { error: profileError } = await supabase.from('landlords').insert({
-          email: email,
+          email: email || user.email,
           first_name: firstName,
           last_name: lastName,
           user_id: user.id
@@ -80,9 +80,7 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
 
         navigate("/landlord/property/new");
       } else {
-        // Set user role in the global context
-        await setRole("tenant");
-        
+        // Tenant flow
         if (email) {
           localStorage.setItem("tenant-email", email);
           navigate("/tenant/application");
@@ -98,6 +96,7 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
         title: "Error setting up profile",
         description: error.message
       });
+      console.error("Role selection error:", error);
     } finally {
       setIsLoading(false);
     }

@@ -38,24 +38,41 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
+        setIsLoadingRole(true);
         // Check if user has a role in the database
         const { data: userRole, error: roleError } = await supabase
           .from('user_roles')
           .select('role')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
-        if (roleError && roleError.code !== 'PGRST116') { // PGRST116 is "no rows found"
+        if (roleError) {
           console.error("Error fetching user role:", roleError);
+          toast({
+            title: "Error",
+            description: "Failed to fetch user role. Please try again.",
+            variant: "destructive",
+          });
         }
 
-        if (userRole) {
+        if (userRole?.role) {
           setRoleState(userRole.role as UserRole);
           localStorage.setItem('userRole', userRole.role);
         } else {
           // If no role in database, check localStorage
           const storedRole = localStorage.getItem('userRole') as UserRole;
           if (storedRole) {
+            // If role in localStorage but not in DB, sync it to DB
+            if (user) {
+              try {
+                await supabase.from('user_roles').upsert({
+                  user_id: user.id,
+                  role: storedRole
+                });
+              } catch (err) {
+                console.error("Error syncing stored role to database:", err);
+              }
+            }
             setRoleState(storedRole);
           }
         }
@@ -67,7 +84,7 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
     };
 
     fetchUserRole();
-  }, [user]);
+  }, [user, toast]);
 
   // Function to set role in both state and database
   const setRole = async (newRole: UserRole) => {
@@ -98,6 +115,7 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
         });
 
       if (error) {
+        console.error("Upsert error:", error);
         throw error;
       }
 
