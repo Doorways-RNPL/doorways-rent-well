@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -196,7 +195,7 @@ const TenantApplication = () => {
         .from('tenants')
         .select('id')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
         
       let tenantId;
         
@@ -213,9 +212,13 @@ const TenantApplication = () => {
           .select('id')
           .single();
           
-        if (createError) throw createError;
+        if (createError) {
+          console.error("Error creating tenant record:", createError);
+          throw createError;
+        }
         tenantId = newTenant?.id;
       } else if (tenantCheckError) {
+        console.error("Error checking for existing tenant:", tenantCheckError);
         throw tenantCheckError;
       } else {
         tenantId = existingTenant?.id;
@@ -253,34 +256,51 @@ const TenantApplication = () => {
           message: "I would like to apply for this property."
         });
         
-      if (applicationError) throw applicationError;
-
-      // Handle file uploads
-      if (applicationData.idDocument) {
-        const fileExt = applicationData.idDocument.name.split('.').pop();
-        const fileName = `${tenantId}/id_document_${Date.now()}.${fileExt}`;
-        
-        await supabase.storage
-          .from('tenant_documents')
-          .upload(fileName, applicationData.idDocument);
+      if (applicationError) {
+        console.error("Error submitting application:", applicationError);
+        throw applicationError;
       }
 
-      if (applicationData.proofOfIncome) {
-        const fileExt = applicationData.proofOfIncome.name.split('.').pop();
-        const fileName = `${tenantId}/income_proof_${Date.now()}.${fileExt}`;
-        
-        await supabase.storage
-          .from('tenant_documents')
-          .upload(fileName, applicationData.proofOfIncome);
-      }
+      // Handle file uploads if tenant record was created
+      if (tenantId) {
+        if (applicationData.idDocument) {
+          const fileExt = applicationData.idDocument.name.split('.').pop();
+          const fileName = `${user.id}/id_document_${Date.now()}.${fileExt}`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from('tenant_documents')
+            .upload(fileName, applicationData.idDocument);
+            
+          if (uploadError) {
+            console.error("Error uploading ID document:", uploadError);
+          }
+        }
 
-      if (applicationData.leaseAgreement) {
-        const fileExt = applicationData.leaseAgreement.name.split('.').pop();
-        const fileName = `${tenantId}/lease_agreement_${Date.now()}.${fileExt}`;
-        
-        await supabase.storage
-          .from('tenant_documents')
-          .upload(fileName, applicationData.leaseAgreement);
+        if (applicationData.proofOfIncome) {
+          const fileExt = applicationData.proofOfIncome.name.split('.').pop();
+          const fileName = `${user.id}/income_proof_${Date.now()}.${fileExt}`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from('tenant_documents')
+            .upload(fileName, applicationData.proofOfIncome);
+            
+          if (uploadError) {
+            console.error("Error uploading proof of income:", uploadError);
+          }
+        }
+
+        if (applicationData.leaseAgreement) {
+          const fileExt = applicationData.leaseAgreement.name.split('.').pop();
+          const fileName = `${user.id}/lease_agreement_${Date.now()}.${fileExt}`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from('tenant_documents')
+            .upload(fileName, applicationData.leaseAgreement);
+            
+          if (uploadError) {
+            console.error("Error uploading lease agreement:", uploadError);
+          }
+        }
       }
       
       toast({
