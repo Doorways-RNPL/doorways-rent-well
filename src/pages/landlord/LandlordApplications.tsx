@@ -42,6 +42,8 @@ const LandlordApplications = () => {
   useEffect(() => {
     const fetchApplications = async () => {
       try {
+        console.log("Fetching applications for user:", user?.id);
+        
         // Get the landlord's ID first
         const { data: landlordData, error: landlordError } = await supabase
           .from('landlords')
@@ -49,15 +51,34 @@ const LandlordApplications = () => {
           .eq('user_id', user?.id)
           .single();
 
-        if (landlordError) throw landlordError;
+        if (landlordError) {
+          console.error("Error fetching landlord data:", landlordError);
+          throw landlordError;
+        }
+        
+        console.log("Landlord data:", landlordData);
 
         // Get property IDs for this landlord
-        const { data: propertiesData } = await supabase
+        const { data: propertiesData, error: propertiesError } = await supabase
           .from('properties')
           .select('id')
           .eq('landlord_id', landlordData.id);
           
+        if (propertiesError) {
+          console.error("Error fetching properties:", propertiesError);
+          throw propertiesError;
+        }
+        
         const propertyIds = propertiesData ? propertiesData.map(prop => prop.id) : [];
+        console.log("Property IDs:", propertyIds);
+        
+        // Early return if no properties
+        if (propertyIds.length === 0) {
+          console.log("No properties found for this landlord");
+          setApplications([]);
+          setLoading(false);
+          return;
+        }
 
         // Get applications for those properties
         const { data, error } = await supabase
@@ -73,10 +94,15 @@ const LandlordApplications = () => {
           .in('property_id', propertyIds)
           .order('created_at', { ascending: false });
 
-        if (error) throw error;
+        if (error) {
+          console.error("Error fetching applications:", error);
+          throw error;
+        }
         
+        console.log("Applications found:", data);
         setApplications(data as Application[]);
       } catch (error: any) {
+        console.error("Error in fetchApplications:", error);
         toast({
           variant: "destructive",
           title: "Error loading applications",
@@ -189,7 +215,12 @@ const LandlordApplications = () => {
               </div>
             ) : applications.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                No applications found.
+                No applications found. This could be because:
+                <ul className="list-disc list-inside mt-2 text-left max-w-md mx-auto">
+                  <li>You don't have any properties yet</li>
+                  <li>No tenants have applied to your properties</li>
+                  <li>Applications may be linked to another landlord account</li>
+                </ul>
               </div>
             ) : (
               <div className="overflow-x-auto">

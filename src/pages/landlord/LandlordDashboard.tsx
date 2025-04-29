@@ -1,12 +1,12 @@
 
 import { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/components/AuthProvider";
 import DashboardLayout from "@/components/landlord/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { Home, Users, FileText, FileCheck } from "lucide-react";
+import { Home, Users, FileText, FileCheck, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface DashboardStats {
@@ -19,6 +19,7 @@ interface DashboardStats {
 const LandlordDashboard = () => {
   const { user, isLoading } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats>({
     totalProperties: 0,
     activeApplications: 0,
@@ -30,6 +31,8 @@ const LandlordDashboard = () => {
   useEffect(() => {
     const loadDashboardStats = async () => {
       try {
+        console.log("Loading dashboard stats for user:", user?.id);
+        
         // Get the landlord's ID first
         const { data: landlordData, error: landlordError } = await supabase
           .from('landlords')
@@ -37,50 +40,95 @@ const LandlordDashboard = () => {
           .eq('user_id', user?.id)
           .single();
 
-        if (landlordError) throw landlordError;
+        if (landlordError) {
+          console.error("Error fetching landlord data:", landlordError);
+          throw landlordError;
+        }
+        
+        console.log("Landlord data:", landlordData);
 
         // Get properties count
-        const { count: propertiesCount } = await supabase
+        const { count: propertiesCount, error: propertiesError } = await supabase
           .from('properties')
           .select('id', { count: 'exact' })
           .eq('landlord_id', landlordData.id);
+          
+        if (propertiesError) {
+          console.error("Error fetching properties count:", propertiesError);
+        }
+
+        console.log("Properties count:", propertiesCount);
 
         // Get property IDs for this landlord
-        const { data: propertiesData } = await supabase
+        const { data: propertiesData, error: propertiesDataError } = await supabase
           .from('properties')
           .select('id')
           .eq('landlord_id', landlordData.id);
           
+        if (propertiesDataError) {
+          console.error("Error fetching property IDs:", propertiesDataError);
+        }
+        
         const propertyIds = propertiesData ? propertiesData.map(prop => prop.id) : [];
+        console.log("Property IDs:", propertyIds);
 
-        // Get active applications count - Using the propertyIds array
-        const { count: applicationsCount } = await supabase
-          .from('tenant_applications')
-          .select('id', { count: 'exact' })
-          .in('property_id', propertyIds)
-          .eq('status', 'pending');
+        let applicationsCount = 0;
+        let leasesCount = 0;
+        let pendingOffersCount = 0;
 
-        // Get active leases count - Using the propertyIds array
-        const { count: leasesCount } = await supabase
-          .from('tenants')
-          .select('id', { count: 'exact' })
-          .in('property_id', propertyIds)
-          .eq('is_active', true);
-          
-        // Get pending offers count
-        const { count: pendingOffersCount } = await supabase
-          .from('offers')
-          .select('id', { count: 'exact' })
-          .in('property_id', propertyIds)
-          .eq('status', 'pending');
+        // Only proceed if we have property IDs
+        if (propertyIds.length > 0) {
+          // Get active applications count
+          const { count: appCount, error: applicationsError } = await supabase
+            .from('tenant_applications')
+            .select('id', { count: 'exact' })
+            .in('property_id', propertyIds)
+            .eq('status', 'pending');
+            
+          if (applicationsError) {
+            console.error("Error fetching applications count:", applicationsError);
+          } else {
+            applicationsCount = appCount || 0;
+          }
+          console.log("Applications count:", applicationsCount);
+
+          // Get active leases count
+          const { count: leaseCount, error: leasesError } = await supabase
+            .from('tenants')
+            .select('id', { count: 'exact' })
+            .in('property_id', propertyIds)
+            .eq('is_active', true);
+            
+          if (leasesError) {
+            console.error("Error fetching leases count:", leasesError);
+          } else {
+            leasesCount = leaseCount || 0;
+          }
+          console.log("Leases count:", leasesCount);
+            
+          // Get pending offers count
+          const { count: offersCount, error: offersError } = await supabase
+            .from('offers')
+            .select('id', { count: 'exact' })
+            .in('property_id', propertyIds)
+            .eq('status', 'pending');
+            
+          if (offersError) {
+            console.error("Error fetching offers count:", offersError);
+          } else {
+            pendingOffersCount = offersCount || 0;
+          }
+          console.log("Pending offers count:", pendingOffersCount);
+        }
 
         setStats({
           totalProperties: propertiesCount || 0,
-          activeApplications: applicationsCount || 0,
-          activeLeases: leasesCount || 0,
-          pendingOffers: pendingOffersCount || 0
+          activeApplications: applicationsCount,
+          activeLeases: leasesCount,
+          pendingOffers: pendingOffersCount
         });
       } catch (error: any) {
+        console.error("Error in loadDashboardStats:", error);
         toast({
           variant: "destructive",
           title: "Error loading dashboard stats",
@@ -115,7 +163,7 @@ const LandlordDashboard = () => {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
+          <Card className="relative">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 Total Properties
@@ -124,12 +172,14 @@ const LandlordDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {isLoadingStats ? "..." : stats.totalProperties}
+                {isLoadingStats ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                ) : stats.totalProperties}
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="relative">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 Active Applications
@@ -138,12 +188,23 @@ const LandlordDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {isLoadingStats ? "..." : stats.activeApplications}
+                {isLoadingStats ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                ) : stats.activeApplications}
               </div>
+              {!isLoadingStats && stats.activeApplications > 0 && (
+                <Button 
+                  variant="link" 
+                  className="p-0 h-auto text-xs text-primary" 
+                  onClick={() => navigate("/landlord/applications")}
+                >
+                  View all
+                </Button>
+              )}
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="relative">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 Active Leases
@@ -152,12 +213,14 @@ const LandlordDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {isLoadingStats ? "..." : stats.activeLeases}
+                {isLoadingStats ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                ) : stats.activeLeases}
               </div>
             </CardContent>
           </Card>
           
-          <Card>
+          <Card className="relative">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 Pending Offers
@@ -166,8 +229,19 @@ const LandlordDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {isLoadingStats ? "..." : stats.pendingOffers}
+                {isLoadingStats ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                ) : stats.pendingOffers}
               </div>
+              {!isLoadingStats && stats.pendingOffers > 0 && (
+                <Button 
+                  variant="link" 
+                  className="p-0 h-auto text-xs text-primary" 
+                  onClick={() => navigate("/landlord/offers")}
+                >
+                  View all
+                </Button>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -178,13 +252,13 @@ const LandlordDashboard = () => {
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-2">
-              <Button onClick={() => window.location.href = "/landlord/property/new"}>
+              <Button onClick={() => navigate("/landlord/property/new")}>
                 Add New Property
               </Button>
-              <Button variant="outline" onClick={() => window.location.href = "/landlord/applications"}>
+              <Button variant="outline" onClick={() => navigate("/landlord/applications")}>
                 View Applications
               </Button>
-              <Button variant="outline" onClick={() => window.location.href = "/landlord/offers"}>
+              <Button variant="outline" onClick={() => navigate("/landlord/offers")}>
                 Manage Offers
               </Button>
             </CardContent>
