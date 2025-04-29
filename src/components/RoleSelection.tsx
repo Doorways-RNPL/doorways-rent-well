@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,10 +17,70 @@ interface RoleSelectionProps {
 const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { setRole } = useUserRole();
+  const { setRole, role } = useUserRole();
   const { user } = useAuth();
   const [selectedRole, setSelectedRole] = useState<"tenant" | "landlord" | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingExisting, setIsCheckingExisting] = useState(true);
+  
+  // Check if user already has a tenant/landlord profile
+  useEffect(() => {
+    const checkExistingProfiles = async () => {
+      if (!user) {
+        setIsCheckingExisting(false);
+        return;
+      }
+      
+      try {
+        // Check if tenant profile exists
+        const { data: tenantData, error: tenantError } = await supabase
+          .from('tenants')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+          
+        if (tenantData) {
+          console.log("Existing tenant profile found, redirecting to dashboard");
+          await setRole("tenant");
+          navigate('/tenant/dashboard');
+          return;
+        }
+        
+        // Check if landlord profile exists
+        const { data: landlordData, error: landlordError } = await supabase
+          .from('landlords')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+          
+        if (landlordData) {
+          console.log("Existing landlord profile found, redirecting to dashboard");
+          await setRole("landlord");
+          navigate('/landlord/dashboard');
+          return;
+        }
+        
+        // If user role is set but no profile exists
+        if (role === "tenant") {
+          navigate('/apply');
+          return;
+        } else if (role === "landlord") {
+          navigate('/landlord/property/new');
+          return;
+        } else if (role === "admin") {
+          navigate('/admin/dashboard');
+          return;
+        }
+        
+        setIsCheckingExisting(false);
+      } catch (error) {
+        console.error("Error checking existing profiles:", error);
+        setIsCheckingExisting(false);
+      }
+    };
+    
+    checkExistingProfiles();
+  }, [user, navigate, setRole, role]);
   
   const handleRoleSelect = (role: "tenant" | "landlord") => {
     setSelectedRole(role);
@@ -80,7 +140,19 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
 
         navigate("/landlord/property/new");
       } else {
-        // Tenant flow
+        // Tenant flow - check if tenant record exists
+        const { data: existingTenant } = await supabase
+          .from('tenants')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+          
+        if (existingTenant) {
+          navigate("/tenant/dashboard");
+          return;
+        }
+        
+        // No tenant record, go to application
         if (email) {
           localStorage.setItem("tenant-email", email);
           navigate("/tenant/application");
@@ -101,6 +173,10 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
       setIsLoading(false);
     }
   };
+  
+  if (isCheckingExisting) {
+    return <div className="text-center py-4">Checking account information...</div>;
+  }
   
   return (
     <div className="space-y-4">

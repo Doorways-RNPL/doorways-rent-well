@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -11,10 +12,14 @@ import RoleSelection from "@/components/RoleSelection";
 import { BreadcrumbNav } from "@/components/ui/breadcrumb-nav";
 import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from "@/components/AuthProvider";
+import { useUserRole } from "@/components/UserRoleProvider";
 
 export default function AuthPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { role, isLoadingRole } = useUserRole();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,6 +29,47 @@ export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [authCompleted, setAuthCompleted] = useState(false);
+  const [checkingExistingData, setCheckingExistingData] = useState(true);
+
+  // Check if user is already authenticated on load and redirect if needed
+  useEffect(() => {
+    const checkUserAndRedirect = async () => {
+      if (!user || isLoadingRole) return;
+
+      // If user is already authenticated, check their role and redirect
+      if (role) {
+        switch (role) {
+          case "tenant":
+            // Check if tenant has an application
+            const { data: tenant } = await supabase
+              .from('tenants')
+              .select('id')
+              .eq('user_id', user.id)
+              .maybeSingle();
+
+            if (tenant) {
+              navigate('/tenant/dashboard');
+            } else {
+              navigate('/apply');
+            }
+            break;
+          case "landlord":
+            navigate('/landlord/dashboard');
+            break;
+          case "admin":
+            navigate('/admin/dashboard');
+            break;
+          default:
+            setAuthCompleted(true);
+            setCheckingExistingData(false);
+        }
+      } else {
+        setCheckingExistingData(false);
+      }
+    };
+
+    checkUserAndRedirect();
+  }, [user, role, isLoadingRole, navigate]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,6 +149,8 @@ export default function AuthPage() {
         title: "Welcome back!",
         description: "You have successfully logged in",
       });
+      // AuthProvider effect will handle redirects based on role
+      // We'll set authCompleted to trigger role check if needed
       setAuthCompleted(true);
     }
   };
@@ -118,6 +166,21 @@ export default function AuthPage() {
   const breadcrumbItems = [
     { label: "Authentication", active: true }
   ];
+
+  // If we're still checking user data, show loading
+  if (user && checkingExistingData) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <main className="container mx-auto px-4 pt-24 pb-16">
+          <div className="mx-auto max-w-md text-center">
+            <p className="text-foreground/70">Checking account information...</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

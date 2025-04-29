@@ -39,6 +39,8 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
 
       try {
         setIsLoadingRole(true);
+        console.log("Fetching role for user:", user.id);
+        
         // Check if user has a role in the database
         const { data: userRole, error: roleError } = await supabase
           .from('user_roles')
@@ -56,24 +58,62 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (userRole?.role) {
+          console.log("User role found in DB:", userRole.role);
           setRoleState(userRole.role as UserRole);
           localStorage.setItem('userRole', userRole.role);
         } else {
+          console.log("No role found in DB, checking localStorage");
           // If no role in database, check localStorage
           const storedRole = localStorage.getItem('userRole') as UserRole;
+          
           if (storedRole) {
+            console.log("Role found in localStorage:", storedRole);
             // If role in localStorage but not in DB, sync it to DB
-            if (user) {
-              try {
-                await supabase.from('user_roles').upsert({
-                  user_id: user.id,
-                  role: storedRole
-                });
-              } catch (err) {
-                console.error("Error syncing stored role to database:", err);
+            try {
+              const { error: insertError } = await supabase.from('user_roles').upsert({
+                user_id: user.id,
+                role: storedRole
+              });
+              
+              if (insertError) {
+                console.error("Error syncing stored role to database:", insertError);
+              } else {
+                console.log("Successfully synced role to database");
+              }
+            } catch (err) {
+              console.error("Error syncing stored role to database:", err);
+            }
+            
+            setRoleState(storedRole);
+          } else {
+            // If no role found, check if user has tenant or landlord record
+            console.log("No role found in localStorage, checking profiles");
+            
+            const { data: tenant } = await supabase
+              .from('tenants')
+              .select('id')
+              .eq('user_id', user.id)
+              .maybeSingle();
+              
+            if (tenant) {
+              console.log("Tenant profile found, setting role as tenant");
+              await setRole("tenant");
+              setRoleState("tenant");
+            } else {
+              const { data: landlord } = await supabase
+                .from('landlords')
+                .select('id')
+                .eq('user_id', user.id)
+                .maybeSingle();
+                
+              if (landlord) {
+                console.log("Landlord profile found, setting role as landlord");
+                await setRole("landlord");
+                setRoleState("landlord");
+              } else {
+                console.log("No profiles found, role remains null");
               }
             }
-            setRoleState(storedRole);
           }
         }
       } catch (error) {
@@ -89,6 +129,7 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
   // Function to set role in both state and database
   const setRole = async (newRole: UserRole) => {
     if (!user) {
+      console.log("Cannot set role - no authenticated user");
       toast({
         title: "Authentication required",
         description: "You must be logged in to set a role.",
@@ -105,6 +146,7 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
 
     try {
       setIsLoadingRole(true);
+      console.log("Setting role for user:", user.id, "to:", newRole);
       
       // First check if a role already exists for this user to prevent duplicate key errors
       const { data: existingRole } = await supabase
@@ -116,6 +158,7 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
       let error;
       
       if (existingRole) {
+        console.log("Existing role found, updating to:", newRole);
         // Update existing role
         const result = await supabase
           .from('user_roles')
@@ -124,6 +167,7 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
           
         error = result.error;
       } else {
+        console.log("No existing role, inserting new role:", newRole);
         // Insert new role
         const result = await supabase
           .from('user_roles')
@@ -144,6 +188,7 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
       setRoleState(newRole);
       localStorage.setItem('userRole', newRole);
       
+      console.log("Role successfully set to:", newRole);
       toast({
         title: "Role updated",
         description: `You are now using Doorways as a ${newRole}.`,

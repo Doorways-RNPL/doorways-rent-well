@@ -38,6 +38,7 @@ const TenantDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [isTenant, setIsTenant] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
   
   // Handle rewards tier calculation
   const calculateRewardsTier = () => {
@@ -52,57 +53,75 @@ const TenantDashboard = () => {
   const { currentTier, nextTier, progressPercentage } = calculateRewardsTier();
 
   useEffect(() => {
-    // Wait for authentication and role to load
-    if (authLoading || isLoadingRole) {
-      return;
-    }
+    const fetchData = async () => {
+      // Wait for authentication and role to load
+      if (authLoading || isLoadingRole) {
+        return;
+      }
 
-    // Check if user is logged in
-    if (!user) {
-      toast({
-        title: "Authentication required",
-        description: "Please log in to access your dashboard",
-        variant: "destructive",
-      });
-      navigate("/auth");
-      return;
-    }
+      console.log("Auth state:", { user, role, authLoading, isLoadingRole });
 
-    // If role is not set as tenant yet, set it
-    if (role !== "tenant") {
-      const setupTenantRole = async () => {
+      // Check if user is logged in
+      if (!user) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in to access your dashboard",
+          variant: "destructive",
+        });
+        navigate("/auth");
+        return;
+      }
+
+      // If role is not set as tenant yet, check if we should set it
+      if (role !== "tenant") {
         try {
-          await setRole("tenant");
+          // Check if user has a tenant record
+          const { data: tenant, error: tenantCheckError } = await supabase
+            .from('tenants')
+            .select('id')
+            .eq('user_id', user.id)
+            .maybeSingle();
+            
+          // If tenant record exists but role isn't set, set it
+          if (tenant) {
+            console.log("Found tenant record but role not set, setting now");
+            await setRole("tenant");
+          } else {
+            console.log("No tenant record found, redirecting to role selection");
+            navigate("/auth");
+            return;
+          }
         } catch (error) {
-          console.error("Error setting tenant role:", error);
+          console.error("Error checking tenant records:", error);
         }
-      };
-      setupTenantRole();
-    }
-    
-    setIsTenant(true);
+      }
+      
+      setIsTenant(true);
 
-    // Fetch tenant information and application data
-    const fetchTenantData = async () => {
+      // Fetch tenant information and application data
       try {
+        console.log("Fetching tenant data for user:", user.id);
+        
         const { data: tenant, error: tenantError } = await supabase
           .from('tenants')
           .select('id')
           .eq('user_id', user.id)
           .maybeSingle();
 
-        if (tenantError && tenantError.code !== 'PGRST116') {
+        if (tenantError) {
           console.error("Error fetching tenant:", tenantError);
-          throw tenantError;
+          setError(`Error fetching tenant: ${tenantError.message}`);
+          setLoading(false);
+          return;
         }
 
         if (!tenant) {
           console.log("No tenant record found, redirecting to application");
-          // No tenant record found, redirect to application, but keep the user logged in
           navigate("/apply");
           return;
         }
 
+        console.log("Tenant record found:", tenant);
         setTenantId(tenant.id);
 
         // Fetch application data
@@ -120,21 +139,24 @@ const TenantDashboard = () => {
           .order('created_at', { ascending: false })
           .maybeSingle();
 
-        if (applicationError && applicationError.code !== 'PGRST116') {
+        if (applicationError) {
           console.error("Error fetching application:", applicationError);
-          throw applicationError;
+          setError(`Error fetching application: ${applicationError.message}`);
+          setLoading(false);
+          return;
         }
 
         if (!application) {
           console.log("No application found, redirecting to apply");
-          // No application found, redirect to apply
           navigate("/apply");
           return;
         }
 
+        console.log("Application data retrieved:", application);
         setApplicationData(application as ApplicationData);
       } catch (error: any) {
         console.error("Error fetching tenant data:", error);
+        setError(`Error loading tenant data: ${error.message}`);
         toast({
           variant: "destructive",
           title: "Error loading your information",
@@ -145,12 +167,13 @@ const TenantDashboard = () => {
       }
     };
 
-    fetchTenantData();
+    fetchData();
 
     // Set up subscription for real-time updates to application status
-    const setupSubscription = async () => {
-      if (!tenantId) return;
+    const setupSubscription = () => {
+      if (!tenantId) return null;
 
+      console.log("Setting up real-time subscription for tenant:", tenantId);
       const channel = supabase
         .channel('tenant-application-updates')
         .on('postgres_changes', {
@@ -178,15 +201,18 @@ const TenantDashboard = () => {
         })
         .subscribe();
 
-      // Clean up subscription on unmount
+      // Return unsubscribe function
       return () => {
         supabase.removeChannel(channel);
       };
     };
 
-    if (tenantId) {
-      setupSubscription();
-    }
+    const unsubscribe = tenantId ? setupSubscription() : null;
+    
+    // Clean up subscription on unmount
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, [navigate, toast, user, tenantId, authLoading, isLoadingRole, role, setRole]);
 
   // Get status badge styling
@@ -246,6 +272,7 @@ const TenantDashboard = () => {
         <main className="pt-24 pb-16">
           <div className="container mx-auto px-4 text-center">
             <p className="text-white/70">Loading your dashboard...</p>
+            {error && <p className="text-red-400 mt-2">Debug info: {error}</p>}
           </div>
         </main>
         <Footer />
@@ -281,6 +308,9 @@ const TenantDashboard = () => {
             <h1 className="text-3xl font-bold text-primary mb-4">Tenant Dashboard</h1>
             <p className="text-white/70">Welcome back, {applicationData?.tenant_first_name || "Tenant"}</p>
           </div>
+
+          {/* Debug info during development */}
+          {error && <div className="bg-red-500/20 p-4 mb-6 rounded-lg text-white">{error}</div>}
 
           {/* Application Status Section */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
