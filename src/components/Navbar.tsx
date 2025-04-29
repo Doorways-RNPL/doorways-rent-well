@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
@@ -7,6 +8,7 @@ import { Menu, X } from 'lucide-react';
 // We'll use a data URI for immediate availability with no network dependency
 const DATA_URI_LOGO = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWhvbWUiPjxwYXRoIGQ9Im0zIDkgOSAtNyA5IDd2MTFhMiAyIDAgMCAxLTIgMkg1YTIgMiAwIDAgMS0yLTJWOVoiLz48cG9seWxpbmUgcG9pbnRzPSI5IDIyIDkgMTIgMTUgMTIgMTUgMjIiLz48L3N2Zz4=";
 import { useAuth } from "@/components/AuthProvider";
+import { useUserRole } from "@/components/UserRoleProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -15,6 +17,7 @@ const Navbar = () => {
   const [logoLoaded, setLogoLoaded] = useState(false);
   const [logoError, setLogoError] = useState(false);
   const { user } = useAuth();
+  const { role } = useUserRole();
   const { toast } = useToast();
 
   const handleLogout = async () => {
@@ -39,6 +42,26 @@ const Navbar = () => {
   const handleLogoError = () => {
     console.log('Logo failed to load, using built-in fallback');
     setLogoError(true);
+  };
+
+  // Determine navigation links and buttons based on user role
+  const getDashboardLink = () => {
+    if (!user) return null;
+    
+    if (role === 'tenant') {
+      return (
+        <Link to="/tenant/dashboard" className="text-white/70 hover:text-primary transition-colors">Dashboard</Link>
+      );
+    } else if (role === 'landlord') {
+      return (
+        <Link to="/landlord/dashboard" className="text-white/70 hover:text-primary transition-colors">Dashboard</Link>
+      );
+    } else if (role === 'admin') {
+      return (
+        <Link to="/admin/dashboard" className="text-white/70 hover:text-primary transition-colors">Admin Dashboard</Link>
+      );
+    }
+    return null;
   };
 
   return (
@@ -79,6 +102,7 @@ const Navbar = () => {
             <Link to="/landlords" className="text-white/70 hover:text-primary transition-colors">For Landlords</Link>
             <Link to="/tenants" className="text-white/70 hover:text-primary transition-colors">For Tenants</Link>
             <Link to="/about" className="text-white/70 hover:text-primary transition-colors">About Us</Link>
+            {getDashboardLink()}
           </div>
           
           <div className="hidden md:flex items-center space-x-4">
@@ -128,13 +152,29 @@ const Navbar = () => {
             <Link to="/about" className="block px-3 py-2 rounded-md text-base font-medium text-white/70 hover:text-primary hover:bg-white/10">
               About Us
             </Link>
+            {user && role && (
+              <Link 
+                to={`/${role}/dashboard`} 
+                className="block px-3 py-2 rounded-md text-base font-medium text-white/70 hover:text-primary hover:bg-white/10"
+              >
+                Dashboard
+              </Link>
+            )}
             <div className="mt-4 flex flex-col space-y-2 px-3">
-              <Button variant="outline" asChild className="w-full justify-center border-white/20 text-white hover:bg-white/10">
-                <Link to="/auth">Log in</Link>
-              </Button>
-              <Button asChild className="w-full justify-center bg-primary text-background hover:bg-primary/90">
-                <Link to="/auth">Sign up</Link>
-              </Button>
+              {user ? (
+                <Button variant="outline" onClick={handleLogout} className="w-full justify-center border-white/20 text-white hover:bg-white/10">
+                  Log out
+                </Button>
+              ) : (
+                <>
+                  <Button variant="outline" asChild className="w-full justify-center border-white/20 text-white hover:bg-white/10">
+                    <Link to="/auth">Log in</Link>
+                  </Button>
+                  <Button asChild className="w-full justify-center bg-primary text-background hover:bg-primary/90">
+                    <Link to="/auth">Sign up</Link>
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>

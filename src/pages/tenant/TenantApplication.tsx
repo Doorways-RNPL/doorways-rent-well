@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -34,6 +35,7 @@ const TenantApplication = () => {
   const [hasAttemptedNext, setHasAttemptedNext] = useState(false);
   const [availableProperties, setAvailableProperties] = useState<PropertyOption[]>([]);
   const [isLoadingProperties, setIsLoadingProperties] = useState(true);
+  const [existingApplication, setExistingApplication] = useState<boolean>(false);
   
   const [applicationData, setApplicationData] = useState({
     firstName: "",
@@ -122,6 +124,53 @@ const TenantApplication = () => {
         lastName: lastName || ""
       }));
     }
+
+    // Check if user already has an application
+    const checkForExistingApplication = async () => {
+      try {
+        const { data: tenant, error: tenantError } = await supabase
+          .from('tenants')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+          
+        if (tenantError && tenantError.code !== 'PGRST116') {
+          console.error("Error checking for tenant:", tenantError);
+          return;
+        }
+        
+        if (tenant) {
+          // User has a tenant record, check for applications
+          const { data: applications, error: appError } = await supabase
+            .from('tenant_applications')
+            .select('*')
+            .eq('tenant_id', tenant.id)
+            .maybeSingle();
+            
+          if (appError && appError.code !== 'PGRST116') {
+            console.error("Error checking for applications:", appError);
+            return;
+          }
+          
+          if (applications) {
+            setExistingApplication(true);
+            toast({
+              title: "Application already submitted",
+              description: "You already have an application in our system. Redirecting to dashboard.",
+            });
+            
+            // Give the toast time to show before redirecting
+            setTimeout(() => {
+              navigate("/tenant/dashboard");
+            }, 3000);
+          }
+        }
+      } catch (error) {
+        console.error("Error checking application status:", error);
+      }
+    };
+    
+    checkForExistingApplication();
   }, [navigate, toast, user, role, setRole]);
 
   const updateApplicationData = (newData: Partial<typeof applicationData>) => {
@@ -319,6 +368,23 @@ const TenantApplication = () => {
         description: "Your application is now under review.",
       });
       
+      // Store the applicationData in localStorage for the dashboard 
+      // This is just for demo purposes - in a real app, we'd fetch from the database
+      localStorage.setItem("tenant-application", JSON.stringify({
+        firstName: applicationData.firstName,
+        lastName: applicationData.lastName,
+        propertyAddress: applicationData.propertyAddress,
+        propertyCity: applicationData.propertyCity,
+        monthlyRent: applicationData.monthlyRent,
+        leaseStartDate: applicationData.leaseStartDate,
+        landlordName: applicationData.landlordName,
+        landlordEmail: applicationData.landlordEmail
+      }));
+      
+      // Set initial application status
+      localStorage.setItem("application-status", "pending");
+      
+      // Redirect to dashboard after submission
       navigate("/tenant/dashboard");
     } catch (error: any) {
       console.error("Error submitting application:", error);
@@ -364,7 +430,7 @@ const TenantApplication = () => {
     { label: "Application", active: true },
   ];
 
-  if (!user) {
+  if (!user || existingApplication) {
     return null; // Don't render anything while redirecting
   }
 

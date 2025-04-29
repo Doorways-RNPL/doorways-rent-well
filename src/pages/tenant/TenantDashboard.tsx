@@ -7,65 +7,36 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { Progress } from "@/components/ui/progress";
 import { Clock, Award, Info } from "lucide-react";
+import { useAuth } from "@/components/AuthProvider";
+import { supabase } from "@/integrations/supabase/client";
+
+interface ApplicationData {
+  id: string;
+  status: string;
+  property_id: string;
+  tenant_first_name: string;
+  tenant_last_name: string;
+  property?: {
+    address: string;
+    city: string;
+    rent_amount: number;
+  };
+  additional_info?: {
+    lease_start_date?: string;
+    lease_duration?: string;
+  };
+  created_at: string;
+  processed_at?: string;
+}
 
 const TenantDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [applicationStatus, setApplicationStatus] = useState<string>("pending");
-  const [applicationData, setApplicationData] = useState<any>(null);
+  const { user } = useAuth();
+  const [applicationData, setApplicationData] = useState<ApplicationData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [tenantId, setTenantId] = useState<string | null>(null);
   
-  // Simulate automatic progress of application for demo purposes
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (applicationStatus === "pending") {
-        setApplicationStatus("under-review");
-        localStorage.setItem("application-status", "under-review");
-        
-        toast({
-          title: "Application Update",
-          description: "Your application is now under review by our team.",
-        });
-        
-        // After another delay, change to approved
-        setTimeout(() => {
-          setApplicationStatus("approved");
-          localStorage.setItem("application-status", "approved");
-          
-          toast({
-            title: "Congratulations!",
-            description: "Your RNPL application has been approved!",
-            variant: "default",
-          });
-        }, 30000); // 30 seconds for demo
-      }
-    }, 10000); // 10 seconds for demo
-    
-    return () => clearTimeout(timer);
-  }, [applicationStatus, toast]);
-
-  useEffect(() => {
-    // Check if user is logged in
-    const email = localStorage.getItem("tenant-email");
-    const storedStatus = localStorage.getItem("application-status");
-    const storedData = localStorage.getItem("tenant-application");
-    
-    if (!email) {
-      navigate("/apply");
-      return;
-    }
-    
-    if (storedStatus) {
-      setApplicationStatus(storedStatus);
-    }
-    
-    if (storedData) {
-      setApplicationData(JSON.parse(storedData));
-    }
-    
-    setLoading(false);
-  }, [navigate]);
-
   // Handle rewards tier calculation
   const calculateRewardsTier = () => {
     // Demo implementation - would be based on payment history
@@ -78,38 +49,160 @@ const TenantDashboard = () => {
 
   const { currentTier, nextTier, progressPercentage } = calculateRewardsTier();
 
+  useEffect(() => {
+    // Check if user is logged in
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+
+    // Fetch tenant information and application data
+    const fetchTenantData = async () => {
+      try {
+        const { data: tenant, error: tenantError } = await supabase
+          .from('tenants')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (tenantError && tenantError.code !== 'PGRST116') {
+          console.error("Error fetching tenant:", tenantError);
+          throw tenantError;
+        }
+
+        if (!tenant) {
+          // No tenant record found, redirect to application
+          navigate("/apply");
+          return;
+        }
+
+        setTenantId(tenant.id);
+
+        // Fetch application data
+        const { data: application, error: applicationError } = await supabase
+          .from('tenant_applications')
+          .select(`
+            *,
+            property:property_id (
+              address,
+              city,
+              rent_amount
+            )
+          `)
+          .eq('tenant_id', tenant.id)
+          .order('created_at', { ascending: false })
+          .maybeSingle();
+
+        if (applicationError && applicationError.code !== 'PGRST116') {
+          console.error("Error fetching application:", applicationError);
+          throw applicationError;
+        }
+
+        if (!application) {
+          // No application found, redirect to apply
+          navigate("/apply");
+          return;
+        }
+
+        setApplicationData(application as ApplicationData);
+      } catch (error: any) {
+        console.error("Error fetching tenant data:", error);
+        toast({
+          variant: "destructive",
+          title: "Error loading your information",
+          description: error.message || "Please try again later"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTenantData();
+
+    // Set up subscription for real-time updates to application status
+    const setupSubscription = async () => {
+      const channel = supabase
+        .channel('tenant-application-updates')
+        .on('postgres_changes', {
+          event: 'UPDATE', 
+          schema: 'public',
+          table: 'tenant_applications',
+          filter: `tenant_id=eq.${tenantId}`
+        }, (payload) => {
+          console.log('Application updated:', payload);
+          
+          // Update application data with the new status
+          if (payload.new) {
+            setApplicationData(prevData => {
+              if (!prevData) return payload.new as ApplicationData;
+              return { ...prevData, ...payload.new };
+            });
+            
+            if (payload.new.status !== payload.old.status) {
+              toast({
+                title: "Application Status Updated",
+                description: `Your application status has changed to ${payload.new.status}.`,
+              });
+            }
+          }
+        })
+        .subscribe();
+
+      // Clean up subscription on unmount
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    };
+
+    if (tenantId) {
+      setupSubscription();
+    }
+  }, [navigate, toast, user, tenantId]);
+
   // Get status badge styling
   const getStatusBadge = () => {
-    switch (applicationStatus) {
-      case "pending":
+    if (!applicationData) return { 
+      color: "bg-gray-500/20", 
+      text: "text-gray-300",
+      label: "Unknown" 
+    };
+    
+    switch (applicationData.status) {
+      case 'pending':
         return { 
           color: "bg-amber-500/20", 
           text: "text-amber-300",
           label: "Application Pending" 
         };
-      case "under-review":
+      case 'under-review':
         return { 
           color: "bg-blue-500/20", 
           text: "text-blue-300",
           label: "Under Review" 
         };
-      case "approved":
+      case 'approved':
         return { 
           color: "bg-emerald-500/20", 
           text: "text-emerald-300",
           label: "Approved" 
         };
-      case "rejected":
+      case 'rejected':
         return { 
           color: "bg-red-500/20", 
           text: "text-red-300",
           label: "Not Approved" 
         };
+      case 'pending_offer':
+        return {
+          color: "bg-purple-500/20",
+          text: "text-purple-300",
+          label: "Offer Pending"
+        };
       default:
         return { 
           color: "bg-gray-500/20", 
           text: "text-gray-300",
-          label: "Unknown" 
+          label: applicationData.status || "Unknown" 
         };
     }
   };
@@ -130,6 +223,12 @@ const TenantDashboard = () => {
     );
   }
 
+  // If no application data, redirect to apply
+  if (!applicationData) {
+    navigate("/apply");
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -137,7 +236,7 @@ const TenantDashboard = () => {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-primary mb-4">Tenant Dashboard</h1>
-            <p className="text-white/70">Welcome back, {applicationData?.firstName || "Tenant"}</p>
+            <p className="text-white/70">Welcome back, {applicationData?.tenant_first_name || "Tenant"}</p>
           </div>
 
           {/* Application Status Section */}
@@ -148,7 +247,7 @@ const TenantDashboard = () => {
                 <div className={`px-3 py-1 rounded-full ${statusBadge.color} ${statusBadge.text} text-sm font-medium`}>
                   {statusBadge.label}
                 </div>
-                {applicationStatus === "under-review" && (
+                {applicationData.status === "under-review" && (
                   <div className="ml-4 flex items-center text-white/70">
                     <Clock size={16} className="mr-1" />
                     <span className="text-sm">Est. completion: 24-48 hours</span>
@@ -156,7 +255,7 @@ const TenantDashboard = () => {
                 )}
               </div>
 
-              {applicationStatus === "pending" && (
+              {applicationData.status === "pending" && (
                 <div className="mb-4 bg-white/5 rounded-lg p-4 text-white/70">
                   <div className="flex items-start">
                     <Info size={20} className="mr-2 flex-shrink-0 mt-1" />
@@ -165,7 +264,7 @@ const TenantDashboard = () => {
                 </div>
               )}
 
-              {applicationStatus === "under-review" && (
+              {applicationData.status === "under-review" && (
                 <div className="mb-4 bg-white/5 rounded-lg p-4 text-white/70">
                   <div className="flex items-start">
                     <Info size={20} className="mr-2 flex-shrink-0 mt-1" />
@@ -174,17 +273,21 @@ const TenantDashboard = () => {
                 </div>
               )}
 
-              {applicationStatus === "approved" && (
+              {applicationData.status === "approved" && (
                 <div className="mb-4 bg-emerald-500/10 rounded-lg p-4 border border-emerald-500/20">
                   <h3 className="text-emerald-300 font-medium mb-2">Congratulations! Your application is approved.</h3>
-                  <p className="text-white/70">Your first payment is due on {new Date().toLocaleDateString()}</p>
-                  <Button className="mt-4 bg-emerald-600 hover:bg-emerald-700 text-white">
-                    Set Up Auto-Payments
-                  </Button>
+                  <p className="text-white/70">Doorways admin team will now generate an offer for you shortly.</p>
                 </div>
               )}
 
-              {applicationStatus === "rejected" && (
+              {applicationData.status === "pending_offer" && (
+                <div className="mb-4 bg-purple-500/10 rounded-lg p-4 border border-purple-500/20">
+                  <h3 className="text-purple-300 font-medium mb-2">Doorways is preparing your offer!</h3>
+                  <p className="text-white/70">Our admin team is now preparing your personalized rent offer. You'll be notified when it's ready.</p>
+                </div>
+              )}
+
+              {applicationData.status === "rejected" && (
                 <div className="mb-4 bg-red-500/10 rounded-lg p-4 border border-red-500/20">
                   <h3 className="text-red-300 font-medium mb-2">Your application was not approved at this time</h3>
                   <p className="text-white/70">We'd like to help you improve your chances of approval.</p>
@@ -194,23 +297,23 @@ const TenantDashboard = () => {
                 </div>
               )}
 
-              {(applicationStatus === "under-review" || applicationStatus === "pending") && (
+              {(applicationData.status === "under-review" || applicationData.status === "pending") && (
                 <div className="mt-6">
                   <h3 className="text-white font-medium mb-2">Application Timeline</h3>
                   <ol className="relative border-l border-white/20">
                     <li className="mb-6 ml-6">
                       <span className="absolute flex items-center justify-center w-6 h-6 bg-primary rounded-full -left-3 text-black text-xs">✓</span>
                       <h4 className="text-white font-medium">Application Submitted</h4>
-                      <p className="text-sm text-white/50">{new Date().toLocaleDateString()}</p>
+                      <p className="text-sm text-white/50">{new Date(applicationData.created_at).toLocaleDateString()}</p>
                     </li>
                     <li className="mb-6 ml-6">
-                      <span className={`absolute flex items-center justify-center w-6 h-6 ${applicationStatus === "under-review" ? "bg-primary" : "bg-white/20"} rounded-full -left-3 text-black text-xs`}>
-                        {applicationStatus === "under-review" ? "✓" : "2"}
+                      <span className={`absolute flex items-center justify-center w-6 h-6 ${applicationData.status === "under-review" ? "bg-primary" : "bg-white/20"} rounded-full -left-3 text-black text-xs`}>
+                        {applicationData.status === "under-review" ? "✓" : "2"}
                       </span>
-                      <h4 className={applicationStatus === "under-review" ? "text-white font-medium" : "text-white/50 font-medium"}>
+                      <h4 className={applicationData.status === "under-review" ? "text-white font-medium" : "text-white/50 font-medium"}>
                         Under Review
                       </h4>
-                      {applicationStatus === "under-review" && (
+                      {applicationData.status === "under-review" && (
                         <p className="text-sm text-white/50">Started {new Date().toLocaleDateString()}</p>
                       )}
                     </li>
@@ -227,20 +330,15 @@ const TenantDashboard = () => {
               <h2 className="text-xl font-semibold text-primary mb-4">Property Details</h2>
               {applicationData && (
                 <div className="space-y-3 text-white/70">
-                  <p className="text-white font-medium">{applicationData.propertyAddress}</p>
-                  <p>{applicationData.propertyCity}, {applicationData.propertyState} {applicationData.propertyZip}</p>
+                  <p className="text-white font-medium">{applicationData.property?.address || "Property Address"}</p>
+                  <p>{applicationData.property?.city || "City"}</p>
                   <div className="pt-2">
                     <p className="text-sm text-white/50">Monthly Rent</p>
-                    <p className="text-xl font-semibold text-white">${applicationData.monthlyRent}</p>
+                    <p className="text-xl font-semibold text-white">${applicationData.property?.rent_amount}</p>
                   </div>
                   <div className="pt-2">
-                    <p className="text-sm text-white/50">Lease Start Date</p>
-                    <p>{applicationData.leaseStartDate}</p>
-                  </div>
-                  <div className="pt-2">
-                    <p className="text-sm text-white/50">Landlord</p>
-                    <p>{applicationData.landlordName}</p>
-                    <p className="text-sm">{applicationData.landlordEmail}</p>
+                    <p className="text-sm text-white/50">Application Date</p>
+                    <p>{new Date(applicationData.created_at).toLocaleDateString()}</p>
                   </div>
                 </div>
               )}
@@ -248,7 +346,7 @@ const TenantDashboard = () => {
           </div>
 
           {/* Rewards Section */}
-          {applicationStatus === "approved" && (
+          {applicationData.status === "approved" || applicationData.status === "pending_offer" && (
             <div className="bg-white/5 border border-white/10 rounded-xl p-6 mb-8">
               <div className="flex items-center mb-4">
                 <Award size={24} className="text-primary mr-2" />
@@ -277,7 +375,7 @@ const TenantDashboard = () => {
           )}
 
           {/* If application is not yet approved, show tips */}
-          {applicationStatus !== "approved" && (
+          {applicationData.status !== "approved" && applicationData.status !== "pending_offer" && (
             <div className="bg-white/5 border border-white/10 rounded-xl p-6">
               <h2 className="text-xl font-semibold text-primary mb-4">Tips to Speed Up Approval</h2>
               <ul className="space-y-3 text-white/70">

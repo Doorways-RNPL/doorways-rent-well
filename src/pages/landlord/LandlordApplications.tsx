@@ -145,17 +145,14 @@ const LandlordApplications = () => {
 
       if (error) throw error;
 
-      // Handle offer creation if approved
       if (newStatus === 'approved') {
-        // Find the application to get property details
-        const application = applications.find(app => app.id === applicationId);
-        
-        if (!application) throw new Error("Application not found");
-
         toast({
           title: "Application approved",
-          description: "You can now generate an offer for this tenant."
+          description: "The Doorways admin team has been notified and will generate an offer shortly."
         });
+
+        // Notify admin about the approved application by updating status to 'approved'
+        // In a real app, we might send an email notification to admin here
       } else if (newStatus === 'rejected') {
         toast({
           title: "Application rejected",
@@ -167,56 +164,6 @@ const LandlordApplications = () => {
       setApplications(prev => prev.map(app => 
         app.id === applicationId 
           ? { ...app, status: newStatus } 
-          : app
-      ));
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error processing application",
-        description: error.message
-      });
-    } finally {
-      setProcessingId(null);
-    }
-  };
-
-  const markForOfferGeneration = async (applicationId: string) => {
-    setProcessingId(applicationId);
-    
-    try {
-      // Update application status to pending_offer
-      const { error } = await supabase
-        .from('tenant_applications')
-        .update({ status: 'pending_offer' })
-        .eq('id', applicationId);
-
-      if (error) throw error;
-
-      // Find the application to get property details
-      const application = applications.find(app => app.id === applicationId);
-      
-      if (!application) throw new Error("Application not found");
-
-      // Create an initial offer record
-      const { error: offerError } = await supabase
-        .from('offers')
-        .insert({
-          tenant_application_id: applicationId,
-          property_id: application.property.id,
-          status: 'pending'
-        });
-
-      if (offerError) throw offerError;
-
-      toast({
-        title: "Application marked for offer generation",
-        description: "The Doorways team has been notified to generate an offer."
-      });
-
-      // Update the application in the local state
-      setApplications(prev => prev.map(app => 
-        app.id === applicationId 
-          ? { ...app, status: 'pending_offer' } 
           : app
       ));
     } catch (error: any) {
@@ -268,7 +215,7 @@ const LandlordApplications = () => {
         <div>
           <h1 className="text-3xl font-bold mb-2">Applications</h1>
           <p className="text-muted-foreground">
-            Manage tenant applications and mark approved applications for offer generation.
+            Review tenant applications for your properties.
           </p>
         </div>
 
@@ -372,29 +319,18 @@ const LandlordApplications = () => {
                             </div>
                           )}
                           {application.status === 'approved' && (
-                            <Button 
-                              size="sm" 
-                              onClick={() => markForOfferGeneration(application.id)}
-                              disabled={processingId === application.id}
-                            >
-                              {processingId === application.id ? (
-                                <>
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                  Processing
-                                </>
-                              ) : (
-                                'Generate Offer'
-                              )}
-                            </Button>
+                            <div className="flex items-center">
+                              <Badge variant="outline" className="bg-purple-500/20 text-purple-300">
+                                Awaiting Admin Offer
+                              </Badge>
+                            </div>
                           )}
                           {application.status === 'pending_offer' && (
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => window.location.href = `/landlord/offers`}
-                            >
-                              View Offers
-                            </Button>
+                            <div className="flex items-center">
+                              <Badge variant="outline" className="bg-purple-500/20 text-purple-300">
+                                Offer Being Generated
+                              </Badge>
+                            </div>
                           )}
                           {application.status === 'rejected' && (
                             <span className="text-muted-foreground text-xs">Rejected</span>

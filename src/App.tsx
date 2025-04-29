@@ -20,6 +20,7 @@ import LandlordDashboard from "./pages/landlord/LandlordDashboard";
 import LandlordApplications from "./pages/landlord/LandlordApplications";
 import LandlordOffers from "./pages/landlord/LandlordOffers";
 import PropertyWizard from "./pages/landlord/PropertyWizard";
+import AdminDashboard from "./pages/admin/AdminDashboard";
 
 const queryClient = new QueryClient();
 
@@ -50,6 +51,9 @@ const App = () => (
               <Route path="/landlord/tenants" element={<Navigate to="/landlord/dashboard" replace />} />
               <Route path="/landlord/payments" element={<Navigate to="/landlord/dashboard" replace />} />
               <Route path="/landlord/settings" element={<Navigate to="/landlord/dashboard" replace />} />
+              
+              {/* Admin routes */}
+              <Route path="/admin/dashboard" element={<AdminDashboard />} />
               
               <Route path="*" element={<NotFound />} />
             </Routes>
