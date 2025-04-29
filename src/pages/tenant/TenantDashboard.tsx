@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -265,6 +266,11 @@ const TenantDashboard = () => {
 
   const statusBadge = getStatusBadge();
 
+  const handleStartApplication = () => {
+    // Direct users straight to the application page when they're already authenticated
+    navigate("/tenant/application");
+  };
+
   if (authLoading || isLoadingRole || (loading && isTenant)) {
     return (
       <div className="min-h-screen bg-background">
@@ -289,8 +295,11 @@ const TenantDashboard = () => {
           <div className="container mx-auto px-4 text-center">
             <h1 className="text-3xl font-bold text-primary mb-4">Tenant Dashboard</h1>
             <p className="text-white/70 mb-8">You haven't submitted an application yet.</p>
-            <Button asChild className="bg-primary text-black hover:bg-primary/90">
-              <a href="/apply">Start Your Application</a>
+            <Button 
+              onClick={handleStartApplication} 
+              className="bg-primary text-black hover:bg-primary/90"
+            >
+              Start Your Application
             </Button>
           </div>
         </main>

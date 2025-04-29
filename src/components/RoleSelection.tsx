@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -149,24 +148,15 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
 
         navigate(redirectPath || "/landlord/property/new");
       } else {
-        // Tenant flow - check if tenant record exists
-        const { data: existingTenant } = await supabase
-          .from('tenants')
-          .select('id')
-          .eq('user_id', user.id)
-          .maybeSingle();
-          
-        if (existingTenant) {
-          navigate(redirectPath || "/tenant/dashboard");
-          return;
-        }
+        // Tenant flow - direct users to application page
+        // If user authenticated and selected tenant role, go straight to application
+        localStorage.setItem("user-role", "tenant");
         
-        // No tenant record, go to application
-        if (email) {
-          localStorage.setItem("tenant-email", email);
-          navigate(redirectPath || "/tenant/application");
+        // Skip the signup process if we already have user info
+        if (email || user.email) {
+          navigate('/tenant/application');
         } else {
-          navigate(redirectPath || "/apply");
+          navigate('/apply');
         }
       }
       

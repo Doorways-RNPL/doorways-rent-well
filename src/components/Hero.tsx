@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from "@/components/AuthProvider";
 import { ArrowRight, User, Home } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +13,7 @@ const rotatingPhrases = [
 ];
 
 const Hero = () => {
+  const navigate = useNavigate();
   const [phraseIndex, setPhraseIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -36,6 +37,16 @@ const Hero = () => {
 
     return () => clearInterval(interval);
   }, []);
+
+  const handleTenantClick = () => {
+    if (user) {
+      // If user is authenticated, go directly to application
+      navigate("/tenant/application");
+    } else {
+      // Otherwise go to auth page
+      navigate("/auth");
+    }
+  };
 
   return (
     <div className="relative overflow-hidden bg-background text-primary min-h-[90vh] flex items-center py-24">
@@ -67,8 +78,8 @@ const Hero = () => {
               {!user ? (
                 <>
                   <div className="grid md:grid-cols-2 gap-6 max-w-3xl">
-                    <Card className="border-white/20 bg-white/5 hover:bg-white/10 hover:border-primary/50 transition-all cursor-pointer">
-                      <Link to="/auth" className="block h-full">
+                    <Card className="border-white/20 bg-white/5 hover:bg-white/10 hover:border-primary/50 transition-all cursor-pointer" onClick={handleTenantClick}>
+                      <div className="block h-full">
                         <CardHeader className="p-4">
                           <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 mb-2">
                             <User className="h-4 w-4 text-primary" />
@@ -84,7 +95,7 @@ const Hero = () => {
                             <ArrowRight className="ml-2 h-3 w-3" />
                           </div>
                         </CardContent>
-                      </Link>
+                      </div>
                     </Card>
                     
                     <Card className="border-white/20 bg-white/5 hover:bg-white/10 hover:border-primary/50 transition-all cursor-pointer">
@@ -111,10 +122,10 @@ const Hero = () => {
                   <div className="flex flex-col sm:flex-row gap-4 justify-start pt-4">
                     <Button 
                       size="lg" 
-                      asChild 
+                      onClick={handleTenantClick}
                       className="text-base px-6 py-5 bg-primary text-black hover:bg-primary/90"
                     >
-                      <Link to="/auth">Create an Account</Link>
+                      Create an Account
                     </Button>
                     <Button 
                       size="lg" 
@@ -132,18 +143,18 @@ const Hero = () => {
                     <>
                       <Button 
                         size="lg" 
-                        asChild 
+                        onClick={() => navigate("/tenant/application")}
                         className="text-base px-8 py-6 bg-primary text-black hover:bg-primary/90"
                       >
-                        <Link to="/tenant/application">Continue Application</Link>
+                        Continue Application
                       </Button>
                       <Button 
                         size="lg" 
                         variant="outline" 
-                        asChild 
+                        onClick={() => navigate("/tenant/dashboard")}
                         className="text-base px-8 py-6 border-white/30 text-white hover:bg-white/10"
                       >
-                        <Link to="/tenant/dashboard">View Dashboard</Link>
+                        View Dashboard
                       </Button>
                     </>
                   ) : userRole === 'landlord' ? (
