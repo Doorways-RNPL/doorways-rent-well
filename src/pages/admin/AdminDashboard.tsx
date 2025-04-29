@@ -1,6 +1,5 @@
-
 import { useEffect, useState } from "react";
-import { Navigate, Link } from "react-router-dom";
+import { Navigate, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/components/AuthProvider";
 import { useUserRole } from "@/components/UserRoleProvider";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -82,26 +81,36 @@ const AdminDashboard = () => {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [statusChangeId, setStatusChangeId] = useState<string | null>(null);
   const [appSearchQuery, setAppSearchQuery] = useState("");
+  const navigate = useNavigate();
   
   useEffect(() => {
-    // Redirect if not authenticated
-    if (!user && !isLoading) {
-      return;
-    }
-
-    // Setup role as admin for demo purposes
+    // Setup role as admin for users visiting this page
     const setupAdminRole = async () => {
-      if (role !== "admin" && user) {
+      if (!user) {
+        return;
+      }
+      
+      if (role !== "admin") {
+        console.log("Setting user role to admin");
         try {
           await setRole("admin");
+          toast({
+            title: "Admin Access Granted",
+            description: "You now have administrator privileges.",
+          });
         } catch (error) {
           console.error("Error setting admin role:", error);
+          toast({
+            variant: "destructive",
+            title: "Access Error",
+            description: "Failed to grant admin privileges. Please try again."
+          });
         }
       }
     };
 
     setupAdminRole();
-  }, [user, isLoading, role, setRole]);
+  }, [user, role, setRole, toast]);
 
   useEffect(() => {
     const fetchApplications = async () => {
@@ -341,10 +350,6 @@ const AdminDashboard = () => {
 
   if (!user) {
     return <Navigate to="/auth" replace />;
-  }
-
-  if (role !== "admin" && !isLoading) {
-    return <Navigate to="/" replace />;
   }
 
   return (

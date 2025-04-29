@@ -39,7 +39,7 @@ const queryClient = new QueryClient({
 // AuthGuard component for protecting routes
 const AuthGuard = ({ allowedRoles }: { allowedRoles: string[] }) => {
   const { user, isLoading } = useAuth();
-  const { role, isLoadingRole } = useUserRole();
+  const { role, isLoadingRole, setRole } = useUserRole();
   const navigate = useNavigate();
   const location = useLocation();
   const [isChecking, setIsChecking] = useState(true);
@@ -56,6 +56,14 @@ const AuthGuard = ({ allowedRoles }: { allowedRoles: string[] }) => {
       sessionStorage.setItem('redirectAfterAuth', location.pathname);
       console.log("User not authenticated, redirecting to auth page");
       navigate('/auth');
+      setIsChecking(false);
+      return;
+    }
+    
+    // Special case for admin dashboard - if user is authenticated but doesn't have admin role yet,
+    // allow access anyway and let the component handle setting admin role
+    if (location.pathname === '/admin/dashboard' && user && !role) {
+      console.log("User accessing admin dashboard without role, allowing access");
       setIsChecking(false);
       return;
     }
@@ -91,7 +99,7 @@ const AuthGuard = ({ allowedRoles }: { allowedRoles: string[] }) => {
     }
     
     setIsChecking(false);
-  }, [user, role, isLoading, isLoadingRole, navigate, allowedRoles, location.pathname]);
+  }, [user, role, isLoading, isLoadingRole, navigate, allowedRoles, location.pathname, setRole]);
   
   // Show loading while checking auth
   if (isLoading || isLoadingRole || isChecking) {

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Link, useLocation } from 'react-router-dom';
@@ -166,8 +165,18 @@ const Navbar = () => {
     }
     
     return {
-      link: null,
-      menuItems: []
+      link: (
+        <Link 
+          to="/admin/dashboard" 
+          onClick={closeMenu}
+          className="text-white/70 hover:text-primary transition-colors"
+        >
+          Admin Access
+        </Link>
+      ),
+      menuItems: [
+        { label: "Admin Access", href: "/admin/dashboard" }
+      ]
     };
   };
   

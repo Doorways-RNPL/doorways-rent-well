@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { User, Home } from "lucide-react";
+import { User, Home, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "./UserRoleProvider";
 import { useAuth } from "./AuthProvider";
@@ -19,7 +19,7 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
   const { toast } = useToast();
   const { setRole, role } = useUserRole();
   const { user } = useAuth();
-  const [selectedRole, setSelectedRole] = useState<"tenant" | "landlord" | null>(null);
+  const [selectedRole, setSelectedRole] = useState<"tenant" | "landlord" | "admin" | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingExisting, setIsCheckingExisting] = useState(true);
   
@@ -101,7 +101,7 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
     checkExistingProfiles();
   }, [user, navigate, setRole, role]);
   
-  const handleRoleSelect = (role: "tenant" | "landlord") => {
+  const handleRoleSelect = (role: "tenant" | "landlord" | "admin") => {
     setSelectedRole(role);
   };
   
@@ -109,7 +109,7 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
     if (!selectedRole) {
       toast({
         title: "Please select a role",
-        description: "You need to select whether you're a tenant or landlord to continue.",
+        description: "You need to select whether you're a tenant, landlord, or admin to continue.",
         variant: "destructive",
       });
       return;
@@ -161,6 +161,10 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
         }
 
         navigate(redirectPath || "/landlord/property/new");
+      } else if (selectedRole === "admin") {
+        // Admin flow - direct users to admin dashboard without creating any profile
+        localStorage.setItem("user-role", "admin");
+        navigate('/admin/dashboard');
       } else {
         // Tenant flow - direct users to application page
         localStorage.setItem("user-role", "tenant");
@@ -193,7 +197,7 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
     <div className="space-y-4">
       <h2 className="text-2xl font-semibold text-center text-primary mb-6">How would you like to use Doorways?</h2>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card 
           className={`cursor-pointer transition-all hover:border-primary ${selectedRole === "tenant" ? "border-primary bg-primary/5" : "border-white/20 bg-white/5"}`}
           onClick={() => handleRoleSelect("tenant")}
@@ -224,6 +228,23 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
           <CardContent>
             <CardDescription className="text-center">
               I want to list my property and find reliable tenants
+            </CardDescription>
+          </CardContent>
+        </Card>
+        
+        <Card 
+          className={`cursor-pointer transition-all hover:border-primary ${selectedRole === "admin" ? "border-primary bg-primary/5" : "border-white/20 bg-white/5"}`}
+          onClick={() => handleRoleSelect("admin")}
+        >
+          <CardHeader>
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 mb-2 mx-auto">
+              <Shield className="h-6 w-6 text-primary" />
+            </div>
+            <CardTitle className="text-center">Admin</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CardDescription className="text-center">
+              I am an administrator and want to manage the platform
             </CardDescription>
           </CardContent>
         </Card>
