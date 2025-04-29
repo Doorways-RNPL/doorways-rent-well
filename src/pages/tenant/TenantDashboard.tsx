@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -8,6 +7,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Progress } from "@/components/ui/progress";
 import { Clock, Award, Info } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
+import { useUserRole } from "@/components/UserRoleProvider";
 import { supabase } from "@/integrations/supabase/client";
 
 interface ApplicationData {
@@ -32,10 +32,12 @@ interface ApplicationData {
 const TenantDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+  const { role, setRole, isLoadingRole } = useUserRole();
   const [applicationData, setApplicationData] = useState<ApplicationData | null>(null);
   const [loading, setLoading] = useState(true);
   const [tenantId, setTenantId] = useState<string | null>(null);
+  const [isTenant, setIsTenant] = useState<boolean>(false);
   
   // Handle rewards tier calculation
   const calculateRewardsTier = () => {
@@ -50,11 +52,35 @@ const TenantDashboard = () => {
   const { currentTier, nextTier, progressPercentage } = calculateRewardsTier();
 
   useEffect(() => {
+    // Wait for authentication and role to load
+    if (authLoading || isLoadingRole) {
+      return;
+    }
+
     // Check if user is logged in
     if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to access your dashboard",
+        variant: "destructive",
+      });
       navigate("/auth");
       return;
     }
+
+    // If role is not set as tenant yet, set it
+    if (role !== "tenant") {
+      const setupTenantRole = async () => {
+        try {
+          await setRole("tenant");
+        } catch (error) {
+          console.error("Error setting tenant role:", error);
+        }
+      };
+      setupTenantRole();
+    }
+    
+    setIsTenant(true);
 
     // Fetch tenant information and application data
     const fetchTenantData = async () => {
@@ -71,7 +97,8 @@ const TenantDashboard = () => {
         }
 
         if (!tenant) {
-          // No tenant record found, redirect to application
+          console.log("No tenant record found, redirecting to application");
+          // No tenant record found, redirect to application, but keep the user logged in
           navigate("/apply");
           return;
         }
@@ -99,6 +126,7 @@ const TenantDashboard = () => {
         }
 
         if (!application) {
+          console.log("No application found, redirecting to apply");
           // No application found, redirect to apply
           navigate("/apply");
           return;
@@ -121,6 +149,8 @@ const TenantDashboard = () => {
 
     // Set up subscription for real-time updates to application status
     const setupSubscription = async () => {
+      if (!tenantId) return;
+
       const channel = supabase
         .channel('tenant-application-updates')
         .on('postgres_changes', {
@@ -157,7 +187,7 @@ const TenantDashboard = () => {
     if (tenantId) {
       setupSubscription();
     }
-  }, [navigate, toast, user, tenantId]);
+  }, [navigate, toast, user, tenantId, authLoading, isLoadingRole, role, setRole]);
 
   // Get status badge styling
   const getStatusBadge = () => {
@@ -209,7 +239,7 @@ const TenantDashboard = () => {
 
   const statusBadge = getStatusBadge();
 
-  if (loading) {
+  if (authLoading || isLoadingRole || (loading && isTenant)) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
@@ -223,10 +253,23 @@ const TenantDashboard = () => {
     );
   }
 
-  // If no application data, redirect to apply
-  if (!applicationData) {
-    navigate("/apply");
-    return null;
+  // User is logged in but doesn't have a tenant application yet
+  if (isTenant && !applicationData && !loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <main className="pt-24 pb-16">
+          <div className="container mx-auto px-4 text-center">
+            <h1 className="text-3xl font-bold text-primary mb-4">Tenant Dashboard</h1>
+            <p className="text-white/70 mb-8">You haven't submitted an application yet.</p>
+            <Button asChild className="bg-primary text-black hover:bg-primary/90">
+              <a href="/apply">Start Your Application</a>
+            </Button>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
   }
 
   return (
@@ -247,7 +290,7 @@ const TenantDashboard = () => {
                 <div className={`px-3 py-1 rounded-full ${statusBadge.color} ${statusBadge.text} text-sm font-medium`}>
                   {statusBadge.label}
                 </div>
-                {applicationData.status === "under-review" && (
+                {applicationData?.status === "under-review" && (
                   <div className="ml-4 flex items-center text-white/70">
                     <Clock size={16} className="mr-1" />
                     <span className="text-sm">Est. completion: 24-48 hours</span>
@@ -255,7 +298,8 @@ const TenantDashboard = () => {
                 )}
               </div>
 
-              {applicationData.status === "pending" && (
+              {/* Status-specific content */}
+              {applicationData?.status === "pending" && (
                 <div className="mb-4 bg-white/5 rounded-lg p-4 text-white/70">
                   <div className="flex items-start">
                     <Info size={20} className="mr-2 flex-shrink-0 mt-1" />
@@ -264,7 +308,7 @@ const TenantDashboard = () => {
                 </div>
               )}
 
-              {applicationData.status === "under-review" && (
+              {applicationData?.status === "under-review" && (
                 <div className="mb-4 bg-white/5 rounded-lg p-4 text-white/70">
                   <div className="flex items-start">
                     <Info size={20} className="mr-2 flex-shrink-0 mt-1" />
@@ -273,21 +317,21 @@ const TenantDashboard = () => {
                 </div>
               )}
 
-              {applicationData.status === "approved" && (
+              {applicationData?.status === "approved" && (
                 <div className="mb-4 bg-emerald-500/10 rounded-lg p-4 border border-emerald-500/20">
                   <h3 className="text-emerald-300 font-medium mb-2">Congratulations! Your application is approved.</h3>
                   <p className="text-white/70">Doorways admin team will now generate an offer for you shortly.</p>
                 </div>
               )}
 
-              {applicationData.status === "pending_offer" && (
+              {applicationData?.status === "pending_offer" && (
                 <div className="mb-4 bg-purple-500/10 rounded-lg p-4 border border-purple-500/20">
                   <h3 className="text-purple-300 font-medium mb-2">Doorways is preparing your offer!</h3>
                   <p className="text-white/70">Our admin team is now preparing your personalized rent offer. You'll be notified when it's ready.</p>
                 </div>
               )}
 
-              {applicationData.status === "rejected" && (
+              {applicationData?.status === "rejected" && (
                 <div className="mb-4 bg-red-500/10 rounded-lg p-4 border border-red-500/20">
                   <h3 className="text-red-300 font-medium mb-2">Your application was not approved at this time</h3>
                   <p className="text-white/70">We'd like to help you improve your chances of approval.</p>
@@ -297,23 +341,23 @@ const TenantDashboard = () => {
                 </div>
               )}
 
-              {(applicationData.status === "under-review" || applicationData.status === "pending") && (
+              {(applicationData?.status === "under-review" || applicationData?.status === "pending") && (
                 <div className="mt-6">
                   <h3 className="text-white font-medium mb-2">Application Timeline</h3>
                   <ol className="relative border-l border-white/20">
                     <li className="mb-6 ml-6">
                       <span className="absolute flex items-center justify-center w-6 h-6 bg-primary rounded-full -left-3 text-black text-xs">✓</span>
                       <h4 className="text-white font-medium">Application Submitted</h4>
-                      <p className="text-sm text-white/50">{new Date(applicationData.created_at).toLocaleDateString()}</p>
+                      <p className="text-sm text-white/50">{applicationData ? new Date(applicationData.created_at).toLocaleDateString() : "N/A"}</p>
                     </li>
                     <li className="mb-6 ml-6">
-                      <span className={`absolute flex items-center justify-center w-6 h-6 ${applicationData.status === "under-review" ? "bg-primary" : "bg-white/20"} rounded-full -left-3 text-black text-xs`}>
-                        {applicationData.status === "under-review" ? "✓" : "2"}
+                      <span className={`absolute flex items-center justify-center w-6 h-6 ${applicationData?.status === "under-review" ? "bg-primary" : "bg-white/20"} rounded-full -left-3 text-black text-xs`}>
+                        {applicationData?.status === "under-review" ? "✓" : "2"}
                       </span>
-                      <h4 className={applicationData.status === "under-review" ? "text-white font-medium" : "text-white/50 font-medium"}>
+                      <h4 className={applicationData?.status === "under-review" ? "text-white font-medium" : "text-white/50 font-medium"}>
                         Under Review
                       </h4>
-                      {applicationData.status === "under-review" && (
+                      {applicationData?.status === "under-review" && (
                         <p className="text-sm text-white/50">Started {new Date().toLocaleDateString()}</p>
                       )}
                     </li>
@@ -328,7 +372,7 @@ const TenantDashboard = () => {
             
             <div className="bg-white/5 border border-white/10 rounded-xl p-6">
               <h2 className="text-xl font-semibold text-primary mb-4">Property Details</h2>
-              {applicationData && (
+              {applicationData && applicationData.property && (
                 <div className="space-y-3 text-white/70">
                   <p className="text-white font-medium">{applicationData.property?.address || "Property Address"}</p>
                   <p>{applicationData.property?.city || "City"}</p>
@@ -346,7 +390,7 @@ const TenantDashboard = () => {
           </div>
 
           {/* Rewards Section */}
-          {applicationData.status === "approved" || applicationData.status === "pending_offer" && (
+          {(applicationData?.status === "approved" || applicationData?.status === "pending_offer") && (
             <div className="bg-white/5 border border-white/10 rounded-xl p-6 mb-8">
               <div className="flex items-center mb-4">
                 <Award size={24} className="text-primary mr-2" />
@@ -375,7 +419,7 @@ const TenantDashboard = () => {
           )}
 
           {/* If application is not yet approved, show tips */}
-          {applicationData.status !== "approved" && applicationData.status !== "pending_offer" && (
+          {applicationData?.status !== "approved" && applicationData?.status !== "pending_offer" && (
             <div className="bg-white/5 border border-white/10 rounded-xl p-6">
               <h2 className="text-xl font-semibold text-primary mb-4">Tips to Speed Up Approval</h2>
               <ul className="space-y-3 text-white/70">

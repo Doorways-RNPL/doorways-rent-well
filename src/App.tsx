@@ -22,7 +22,15 @@ import LandlordOffers from "./pages/landlord/LandlordOffers";
 import PropertyWizard from "./pages/landlord/PropertyWizard";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 30000,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -33,6 +41,7 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
+              {/* Public routes */}
               <Route path="/" element={<Index />} />
               <Route path="/about" element={<About />} />
               <Route path="/how-it-works" element={<HowItWorksPage />} />
@@ -40,6 +49,8 @@ const App = () => (
               <Route path="/tenants" element={<TenantsPage />} />
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/apply" element={<TenantSignup />} />
+              
+              {/* Tenant routes */}
               <Route path="/tenant/application" element={<TenantApplication />} />
               <Route path="/tenant/dashboard" element={<TenantDashboard />} />
               
@@ -55,6 +66,7 @@ const App = () => (
               {/* Admin routes */}
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
               
+              {/* Fallback route */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
