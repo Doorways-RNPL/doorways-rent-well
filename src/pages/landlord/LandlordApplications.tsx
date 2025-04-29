@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/components/AuthProvider";
+import { useUserRole } from "@/components/UserRoleProvider";
 import DashboardLayout from "@/components/landlord/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,8 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface Application {
   id: string;
@@ -25,30 +27,37 @@ interface Application {
   tenant_email: string;
   status: string;
   created_at: string;
+  monthly_income: number | null;
   property: {
     id: string;
     address: string;
     city: string;
+    rent_amount: number | null;
   };
 }
 
 const LandlordApplications = () => {
   const { user, isLoading } = useAuth();
+  const { role } = useUserRole();
   const { toast } = useToast();
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [landlordId, setLandlordId] = useState<string | null>(null);
+  const [hasProperties, setHasProperties] = useState(false);
 
   useEffect(() => {
     const fetchApplications = async () => {
+      if (!user) return;
+      
       try {
-        console.log("Fetching applications for user:", user?.id);
+        console.log("Fetching applications for user:", user.id);
         
         // Get the landlord's ID first
         const { data: landlordData, error: landlordError } = await supabase
           .from('landlords')
           .select('id')
-          .eq('user_id', user?.id)
+          .eq('user_id', user.id)
           .single();
 
         if (landlordError) {
@@ -56,6 +65,7 @@ const LandlordApplications = () => {
           throw landlordError;
         }
         
+        setLandlordId(landlordData.id);
         console.log("Landlord data:", landlordData);
 
         // Get property IDs for this landlord
@@ -70,6 +80,7 @@ const LandlordApplications = () => {
         }
         
         const propertyIds = propertiesData ? propertiesData.map(prop => prop.id) : [];
+        setHasProperties(propertyIds.length > 0);
         console.log("Property IDs:", propertyIds);
         
         // Early return if no properties
@@ -88,7 +99,8 @@ const LandlordApplications = () => {
             property:property_id (
               id, 
               address, 
-              city
+              city,
+              rent_amount
             )
           `)
           .in('property_id', propertyIds)
@@ -117,6 +129,56 @@ const LandlordApplications = () => {
       fetchApplications();
     }
   }, [user, toast]);
+
+  const handleStatusChange = async (applicationId: string, newStatus: string) => {
+    setProcessingId(applicationId);
+    
+    try {
+      // Update application status
+      const { error } = await supabase
+        .from('tenant_applications')
+        .update({ 
+          status: newStatus,
+          processed_at: new Date().toISOString()
+        })
+        .eq('id', applicationId);
+
+      if (error) throw error;
+
+      // Handle offer creation if approved
+      if (newStatus === 'approved') {
+        // Find the application to get property details
+        const application = applications.find(app => app.id === applicationId);
+        
+        if (!application) throw new Error("Application not found");
+
+        toast({
+          title: "Application approved",
+          description: "You can now generate an offer for this tenant."
+        });
+      } else if (newStatus === 'rejected') {
+        toast({
+          title: "Application rejected",
+          description: "The tenant will be notified."
+        });
+      }
+
+      // Update the application in the local state
+      setApplications(prev => prev.map(app => 
+        app.id === applicationId 
+          ? { ...app, status: newStatus } 
+          : app
+      ));
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error processing application",
+        description: error.message
+      });
+    } finally {
+      setProcessingId(null);
+    }
+  };
 
   const markForOfferGeneration = async (applicationId: string) => {
     setProcessingId(applicationId);
@@ -186,6 +248,12 @@ const LandlordApplications = () => {
     }
   };
 
+  // Calculate whether an applicant passes the income check (3x rent amount)
+  const passesIncomeCheck = (application: Application) => {
+    if (!application.monthly_income || !application.property.rent_amount) return false;
+    return application.monthly_income >= application.property.rent_amount * 3;
+  };
+
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
@@ -204,6 +272,16 @@ const LandlordApplications = () => {
           </p>
         </div>
 
+        {!hasProperties && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>No properties found</AlertTitle>
+            <AlertDescription>
+              You need to add properties before you can receive applications.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <Card>
           <CardHeader>
             <CardTitle>All Applications</CardTitle>
@@ -219,7 +297,6 @@ const LandlordApplications = () => {
                 <ul className="list-disc list-inside mt-2 text-left max-w-md mx-auto">
                   <li>You don't have any properties yet</li>
                   <li>No tenants have applied to your properties</li>
-                  <li>Applications may be linked to another landlord account</li>
                 </ul>
               </div>
             ) : (
@@ -230,6 +307,7 @@ const LandlordApplications = () => {
                       <TableHead>Tenant</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Property</TableHead>
+                      <TableHead>Income Check</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Application Date</TableHead>
                       <TableHead>Actions</TableHead>
@@ -244,6 +322,24 @@ const LandlordApplications = () => {
                         <TableCell>{application.tenant_email}</TableCell>
                         <TableCell>
                           {application.property.address}, {application.property.city}
+                          <div className="text-xs text-muted-foreground">
+                            ${application.property.rent_amount}/month
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {application.monthly_income ? (
+                            passesIncomeCheck(application) ? (
+                              <Badge variant="outline" className="bg-green-500/20 text-green-500">
+                                Passes
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-red-500/20 text-red-500">
+                                Fails
+                              </Badge>
+                            )
+                          ) : (
+                            <span className="text-muted-foreground text-xs">No data</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           {renderStatusBadge(application.status)}
@@ -252,6 +348,29 @@ const LandlordApplications = () => {
                           {new Date(application.created_at).toLocaleDateString()}
                         </TableCell>
                         <TableCell>
+                          {application.status === 'pending' && (
+                            <div className="flex gap-2">
+                              <Button 
+                                size="sm" 
+                                variant="default"
+                                onClick={() => handleStatusChange(application.id, 'approved')}
+                                disabled={processingId === application.id}
+                              >
+                                {processingId === application.id ? (
+                                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                                ) : 'Approve'}
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                className="border-red-500 text-red-500 hover:bg-red-500/10"
+                                onClick={() => handleStatusChange(application.id, 'rejected')}
+                                disabled={processingId === application.id}
+                              >
+                                Reject
+                              </Button>
+                            </div>
+                          )}
                           {application.status === 'approved' && (
                             <Button 
                               size="sm" 
@@ -272,10 +391,13 @@ const LandlordApplications = () => {
                             <Button 
                               size="sm" 
                               variant="outline"
-                              onClick={() => window.location.href = `/landlord/offers/${application.id}`}
+                              onClick={() => window.location.href = `/landlord/offers`}
                             >
-                              View Offer Process
+                              View Offers
                             </Button>
+                          )}
+                          {application.status === 'rejected' && (
+                            <span className="text-muted-foreground text-xs">Rejected</span>
                           )}
                         </TableCell>
                       </TableRow>

@@ -1,7 +1,8 @@
 
-import { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/components/AuthProvider";
+import { useUserRole } from "@/components/UserRoleProvider";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +16,9 @@ import { supabase } from "@/integrations/supabase/client";
 
 const PropertyWizard = () => {
   const { user, isLoading } = useAuth();
+  const { role, setRole } = useUserRole();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<PropertyFormData>({
     property_type: 'house',
@@ -29,8 +32,65 @@ const PropertyWizard = () => {
   });
   const [images, setImages] = useState<PropertyImage[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [landlordId, setLandlordId] = useState<string | null>(null);
+  const [isLoadingLandlord, setIsLoadingLandlord] = useState(true);
   
-  if (isLoading) {
+  useEffect(() => {
+    // Ensure user has landlord role
+    if (role !== "landlord" && user) {
+      setRole("landlord");
+    }
+    
+    // Fetch landlord ID
+    const fetchLandlordId = async () => {
+      if (!user) return;
+      
+      setIsLoadingLandlord(true);
+      try {
+        const { data, error } = await supabase
+          .from('landlords')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
+          
+        if (error) {
+          if (error.code === 'PGRST116') {
+            // No landlord record found, create one
+            const { data: newLandlord, error: createError } = await supabase
+              .from('landlords')
+              .insert({
+                email: user.email || '',
+                first_name: user.user_metadata?.first_name || '',
+                last_name: user.user_metadata?.last_name || '',
+                user_id: user.id
+              })
+              .select('id')
+              .single();
+              
+            if (createError) throw createError;
+            setLandlordId(newLandlord?.id || null);
+          } else {
+            throw error;
+          }
+        } else {
+          setLandlordId(data?.id || null);
+        }
+      } catch (error: any) {
+        console.error("Error fetching landlord ID:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Could not retrieve your landlord profile. Please try again later."
+        });
+      } finally {
+        setIsLoadingLandlord(false);
+      }
+    };
+    
+    fetchLandlordId();
+  }, [user, toast, role, setRole]);
+  
+  if (isLoading || isLoadingLandlord) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
   
@@ -54,35 +114,35 @@ const PropertyWizard = () => {
   };
 
   const handleCreateProperty = async () => {
+    if (!landlordId) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Landlord profile not found. Please try again later."
+      });
+      return;
+    }
+    
     setIsSubmitting(true);
     try {
-      // Get the landlord's ID
-      const { data: landlordData, error: landlordError } = await supabase
-        .from('landlords')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (landlordError || !landlordData) {
-        throw new Error('Could not find landlord profile');
-      }
-
-      // Create the property
+      // Create the property with correct landlord_id
       const { data: propertyData, error: propertyError } = await supabase
         .from('properties')
         .insert({
           ...formData,
-          landlord_id: landlordData.id
+          landlord_id: landlordId
         })
         .select()
         .single();
 
       if (propertyError || !propertyData) {
-        throw new Error('Failed to create property');
+        throw new Error(propertyError?.message || 'Failed to create property');
       }
 
       // Upload images
       for (const image of images) {
+        if (!image.file) continue;
+        
         const fileExt = image.file.name.split('.').pop();
         const filePath = `${propertyData.id}/${Date.now()}.${fileExt}`;
 
@@ -109,7 +169,7 @@ const PropertyWizard = () => {
       });
 
       // Redirect to dashboard
-      window.location.href = '/landlord/dashboard';
+      navigate('/landlord/dashboard');
     } catch (error: any) {
       toast({
         variant: "destructive",

@@ -1,9 +1,12 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { BreadcrumbNav } from "@/components/ui/breadcrumb-nav";
 import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/components/AuthProvider";
+import { useUserRole } from "@/components/UserRoleProvider";
 import ApplicationProgress from "@/components/tenant/ApplicationProgress";
 import ApplicationNavigation from "@/components/tenant/ApplicationNavigation";
 import { validateStep } from "@/lib/constants/application";
@@ -13,13 +16,26 @@ import TenantStep3 from "@/components/tenant/TenantStep3";
 import TenantStep4 from "@/components/tenant/TenantStep4";
 import TenantStep5 from "@/components/tenant/TenantStep5";
 import TenantStep6 from "@/components/tenant/TenantStep6";
+import { supabase } from "@/integrations/supabase/client";
+
+interface PropertyOption {
+  id: string;
+  address: string;
+  city: string;
+  rent_amount: number;
+}
 
 const TenantApplication = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { role, setRole } = useUserRole();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasAttemptedNext, setHasAttemptedNext] = useState(false);
+  const [availableProperties, setAvailableProperties] = useState<PropertyOption[]>([]);
+  const [isLoadingProperties, setIsLoadingProperties] = useState(true);
+  
   const [applicationData, setApplicationData] = useState({
     // Step 1: Personal info
     firstName: "",
@@ -39,6 +55,7 @@ const TenantApplication = () => {
     monthlyIncome: "",
     
     // Step 4: Lease details
+    propertyId: "", // Store property ID instead of address
     propertyAddress: "",
     propertyCity: "",
     monthlyRent: "",
@@ -59,27 +76,62 @@ const TenantApplication = () => {
     agreeToBackground: false,
   });
 
+  // Fetch available properties
+  useEffect(() => {
+    const fetchProperties = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('properties')
+          .select('id, address, city, rent_amount')
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        setAvailableProperties(data || []);
+      } catch (error: any) {
+        console.error("Error fetching properties:", error);
+        toast({
+          title: "Error loading properties",
+          description: "Unable to load available properties. Please try again later.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoadingProperties(false);
+      }
+    };
+    
+    fetchProperties();
+  }, [toast]);
+
   // Check if user is logged in
   useEffect(() => {
     const email = localStorage.getItem("tenant-email");
     const firstName = localStorage.getItem("tenant-firstName");
     const lastName = localStorage.getItem("tenant-lastName");
     
-    if (!email) {
+    if (!user) {
       toast({
-        title: "Please sign up first",
+        title: "Please sign in first",
         description: "You need to create an account before applying.",
         variant: "destructive",
       });
-      navigate("/apply");
-    } else {
+      navigate("/auth");
+      return;
+    }
+    
+    // Set role if we're coming from the signup flow
+    if (role !== "tenant") {
+      setRole("tenant");
+    }
+
+    if (email) {
       setApplicationData(prev => ({
         ...prev,
         firstName: firstName || "",
         lastName: lastName || ""
       }));
     }
-  }, [navigate, toast]);
+  }, [navigate, toast, user, role, setRole]);
 
   const updateApplicationData = (newData: Partial<typeof applicationData>) => {
     setApplicationData(prev => ({ ...prev, ...newData }));
@@ -108,7 +160,7 @@ const TenantApplication = () => {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validateStep(currentStep, applicationData)) {
       toast({
         title: "Missing information",
@@ -118,18 +170,118 @@ const TenantApplication = () => {
       return;
     }
     
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "You must be logged in to submit an application.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!applicationData.propertyId) {
+      toast({
+        title: "Property selection required",
+        description: "Please select a property to apply for.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsSubmitting(true);
     
-    // Simulate submission
-    setTimeout(() => {
-      localStorage.setItem("tenant-application", JSON.stringify({
-        ...applicationData,
-        idDocument: applicationData.idDocument ? applicationData.idDocument.name : null,
-        proofOfIncome: applicationData.proofOfIncome ? applicationData.proofOfIncome.name : null,
-        leaseAgreement: applicationData.leaseAgreement ? applicationData.leaseAgreement.name : null,
-      }));
+    try {
+      // Create tenant record if it doesn't exist
+      const { data: existingTenant, error: tenantCheckError } = await supabase
+        .from('tenants')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+        
+      let tenantId;
+        
+      if (tenantCheckError && tenantCheckError.code === 'PGRST116') {
+        // No tenant record found, create one
+        const { data: newTenant, error: createError } = await supabase
+          .from('tenants')
+          .insert({
+            first_name: applicationData.firstName,
+            last_name: applicationData.lastName,
+            email: user.email || localStorage.getItem("tenant-email") || '',
+            user_id: user.id
+          })
+          .select('id')
+          .single();
+          
+        if (createError) throw createError;
+        tenantId = newTenant?.id;
+      } else if (tenantCheckError) {
+        throw tenantCheckError;
+      } else {
+        tenantId = existingTenant?.id;
+      }
       
-      localStorage.setItem("application-status", "pending");
+      // Format employment info
+      const employmentInfo = {
+        employer: applicationData.employerName,
+        job_title: applicationData.jobTitle,
+      };
+      
+      // Format additional info
+      const additionalInfo = {
+        current_address: applicationData.currentAddress,
+        current_city: applicationData.currentCity,
+        move_in_date: applicationData.moveInDate,
+        id_number: applicationData.idNumber,
+        date_of_birth: applicationData.dateOfBirth,
+        lease_duration: applicationData.leaseDuration,
+      };
+      
+      // Submit application to database
+      const { error: applicationError } = await supabase
+        .from('tenant_applications')
+        .insert({
+          tenant_email: user.email || localStorage.getItem("tenant-email") || '',
+          tenant_first_name: applicationData.firstName,
+          tenant_last_name: applicationData.lastName,
+          property_id: applicationData.propertyId,
+          tenant_id: tenantId,
+          monthly_income: parseFloat(applicationData.monthlyIncome),
+          employment_info: employmentInfo,
+          additional_info: additionalInfo,
+          status: 'pending',
+          message: "I would like to apply for this property."
+        });
+        
+      if (applicationError) throw applicationError;
+
+      // Handle file uploads
+      if (applicationData.idDocument) {
+        const fileExt = applicationData.idDocument.name.split('.').pop();
+        const fileName = `${tenantId}/id_document_${Date.now()}.${fileExt}`;
+        
+        await supabase.storage
+          .from('tenant_documents')
+          .upload(fileName, applicationData.idDocument);
+      }
+
+      if (applicationData.proofOfIncome) {
+        const fileExt = applicationData.proofOfIncome.name.split('.').pop();
+        const fileName = `${tenantId}/income_proof_${Date.now()}.${fileExt}`;
+        
+        await supabase.storage
+          .from('tenant_documents')
+          .upload(fileName, applicationData.proofOfIncome);
+      }
+
+      if (applicationData.leaseAgreement) {
+        const fileExt = applicationData.leaseAgreement.name.split('.').pop();
+        const fileName = `${tenantId}/lease_agreement_${Date.now()}.${fileExt}`;
+        
+        await supabase.storage
+          .from('tenant_documents')
+          .upload(fileName, applicationData.leaseAgreement);
+      }
       
       toast({
         title: "Application submitted successfully!",
@@ -137,8 +289,16 @@ const TenantApplication = () => {
       });
       
       navigate("/tenant/dashboard");
+    } catch (error: any) {
+      console.error("Error submitting application:", error);
+      toast({
+        variant: "destructive",
+        title: "Error submitting application",
+        description: error.message
+      });
+    } finally {
       setIsSubmitting(false);
-    }, 2000);
+    }
   };
 
   const renderStepContent = () => {
@@ -150,7 +310,14 @@ const TenantApplication = () => {
       case 3:
         return <TenantStep3 data={applicationData} updateData={updateApplicationData} />;
       case 4:
-        return <TenantStep4 data={applicationData} updateData={updateApplicationData} />;
+        return (
+          <TenantStep4 
+            data={applicationData} 
+            updateData={updateApplicationData} 
+            properties={availableProperties} 
+            isLoading={isLoadingProperties} 
+          />
+        );
       case 5:
         return <TenantStep5 data={applicationData} updateData={updateApplicationData} />;
       case 6:
@@ -165,6 +332,10 @@ const TenantApplication = () => {
     { label: "Apply", href: "/apply" },
     { label: "Application", active: true },
   ];
+
+  if (!user) {
+    return null; // Don't render anything while redirecting
+  }
 
   return (
     <div className="min-h-screen bg-background">

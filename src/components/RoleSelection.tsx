@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { User, Home } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useUserRole } from "./UserRoleProvider";
 
 interface RoleSelectionProps {
   email?: string;
@@ -15,6 +16,7 @@ interface RoleSelectionProps {
 const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { setRole } = useUserRole();
   const [selectedRole, setSelectedRole] = useState<"tenant" | "landlord" | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   
@@ -41,6 +43,9 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
         if (!user) {
           throw new Error("No authenticated user found");
         }
+
+        // Set user role in the global context
+        await setRole("landlord");
 
         // First check if a landlord profile already exists
         const { data: existingLandlord, error: checkError } = await supabase
@@ -75,6 +80,9 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
 
         navigate("/landlord/property/new");
       } else {
+        // Set user role in the global context
+        await setRole("tenant");
+        
         if (email) {
           localStorage.setItem("tenant-email", email);
           navigate("/tenant/application");

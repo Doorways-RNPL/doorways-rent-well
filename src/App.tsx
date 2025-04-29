@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/components/AuthProvider";
+import { UserRoleProvider } from "@/components/UserRoleProvider";
 import Index from "./pages/Index";
 import About from "./pages/About";
 import HowItWorksPage from "./pages/HowItWorksPage";
@@ -25,34 +26,36 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/how-it-works" element={<HowItWorksPage />} />
-            <Route path="/landlords" element={<LandlordsPage />} />
-            <Route path="/tenants" element={<TenantsPage />} />
-            <Route path="/auth" element={<AuthPage />} />
-            <Route path="/apply" element={<TenantSignup />} />
-            <Route path="/tenant/application" element={<TenantApplication />} />
-            <Route path="/tenant/dashboard" element={<TenantDashboard />} />
-            
-            {/* Landlord routes */}
-            <Route path="/landlord/dashboard" element={<LandlordDashboard />} />
-            <Route path="/landlord/property/new" element={<PropertyWizard />} />
-            <Route path="/landlord/applications" element={<LandlordApplications />} />
-            <Route path="/landlord/offers" element={<LandlordOffers />} />
-            <Route path="/landlord/tenants" element={<Navigate to="/landlord/dashboard" replace />} />
-            <Route path="/landlord/payments" element={<Navigate to="/landlord/dashboard" replace />} />
-            <Route path="/landlord/settings" element={<Navigate to="/landlord/dashboard" replace />} />
-            
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+      <UserRoleProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/how-it-works" element={<HowItWorksPage />} />
+              <Route path="/landlords" element={<LandlordsPage />} />
+              <Route path="/tenants" element={<TenantsPage />} />
+              <Route path="/auth" element={<AuthPage />} />
+              <Route path="/apply" element={<TenantSignup />} />
+              <Route path="/tenant/application" element={<TenantApplication />} />
+              <Route path="/tenant/dashboard" element={<TenantDashboard />} />
+              
+              {/* Landlord routes */}
+              <Route path="/landlord/dashboard" element={<LandlordDashboard />} />
+              <Route path="/landlord/property/new" element={<PropertyWizard />} />
+              <Route path="/landlord/applications" element={<LandlordApplications />} />
+              <Route path="/landlord/offers" element={<LandlordOffers />} />
+              <Route path="/landlord/tenants" element={<Navigate to="/landlord/dashboard" replace />} />
+              <Route path="/landlord/payments" element={<Navigate to="/landlord/dashboard" replace />} />
+              <Route path="/landlord/settings" element={<Navigate to="/landlord/dashboard" replace />} />
+              
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </UserRoleProvider>
     </AuthProvider>
   </QueryClientProvider>
 );

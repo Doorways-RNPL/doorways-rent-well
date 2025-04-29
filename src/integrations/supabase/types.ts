@@ -160,7 +160,7 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string
-          landlord_id: string | null
+          landlord_id: string
           property_type: string | null
           rent_amount: number | null
           updated_at: string | null
@@ -174,7 +174,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
-          landlord_id?: string | null
+          landlord_id: string
           property_type?: string | null
           rent_amount?: number | null
           updated_at?: string | null
@@ -188,7 +188,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
-          landlord_id?: string | null
+          landlord_id?: string
           property_type?: string | null
           rent_amount?: number | null
           updated_at?: string | null
@@ -240,38 +240,53 @@ export type Database = {
       }
       tenant_applications: {
         Row: {
+          additional_info: Json | null
           created_at: string
+          employment_info: Json | null
           id: string
           message: string | null
+          monthly_income: number | null
           phone: string | null
+          processed_at: string | null
           property_id: string
           status: string
           tenant_email: string
           tenant_first_name: string
+          tenant_id: string | null
           tenant_last_name: string
           updated_at: string
         }
         Insert: {
+          additional_info?: Json | null
           created_at?: string
+          employment_info?: Json | null
           id?: string
           message?: string | null
+          monthly_income?: number | null
           phone?: string | null
+          processed_at?: string | null
           property_id: string
           status?: string
           tenant_email: string
           tenant_first_name: string
+          tenant_id?: string | null
           tenant_last_name: string
           updated_at?: string
         }
         Update: {
+          additional_info?: Json | null
           created_at?: string
+          employment_info?: Json | null
           id?: string
           message?: string | null
+          monthly_income?: number | null
           phone?: string | null
+          processed_at?: string | null
           property_id?: string
           status?: string
           tenant_email?: string
           tenant_first_name?: string
+          tenant_id?: string | null
           tenant_last_name?: string
           updated_at?: string
         }
@@ -281,6 +296,13 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_applications_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -379,6 +401,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {

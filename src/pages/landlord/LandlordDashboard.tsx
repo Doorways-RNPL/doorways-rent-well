@@ -2,12 +2,14 @@
 import { useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/components/AuthProvider";
+import { useUserRole } from "@/components/UserRoleProvider";
 import DashboardLayout from "@/components/landlord/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { Home, Users, FileText, FileCheck, Loader2 } from "lucide-react";
+import { Home, Users, FileText, FileCheck, Loader2, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface DashboardStats {
   totalProperties: number;
@@ -18,6 +20,7 @@ interface DashboardStats {
 
 const LandlordDashboard = () => {
   const { user, isLoading } = useAuth();
+  const { role, setRole } = useUserRole();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats>({
@@ -27,22 +30,58 @@ const LandlordDashboard = () => {
     pendingOffers: 0
   });
   const [isLoadingStats, setIsLoadingStats] = useState(true);
+  const [hasProperties, setHasProperties] = useState(false);
+
+  useEffect(() => {
+    // Ensure user has landlord role
+    if (role !== "landlord" && user) {
+      setRole("landlord");
+    }
+  }, [user, role, setRole]);
 
   useEffect(() => {
     const loadDashboardStats = async () => {
+      if (!user) return;
+      
       try {
-        console.log("Loading dashboard stats for user:", user?.id);
+        console.log("Loading dashboard stats for user:", user.id);
         
         // Get the landlord's ID first
         const { data: landlordData, error: landlordError } = await supabase
           .from('landlords')
           .select('id')
-          .eq('user_id', user?.id)
+          .eq('user_id', user.id)
           .single();
 
         if (landlordError) {
-          console.error("Error fetching landlord data:", landlordError);
-          throw landlordError;
+          if (landlordError.code === 'PGRST116') {
+            // No landlord record found, create one
+            const { data: newLandlord, error: createError } = await supabase
+              .from('landlords')
+              .insert({
+                email: user.email || '',
+                first_name: user.user_metadata?.first_name || '',
+                last_name: user.user_metadata?.last_name || '',
+                user_id: user.id
+              })
+              .select('id')
+              .single();
+              
+            if (createError) throw createError;
+            
+            // Set stats to zero for new users
+            setStats({
+              totalProperties: 0,
+              activeApplications: 0,
+              activeLeases: 0,
+              pendingOffers: 0
+            });
+            setHasProperties(false);
+            return;
+          } else {
+            console.error("Error fetching landlord data:", landlordError);
+            throw landlordError;
+          }
         }
         
         console.log("Landlord data:", landlordData);
@@ -55,8 +94,10 @@ const LandlordDashboard = () => {
           
         if (propertiesError) {
           console.error("Error fetching properties count:", propertiesError);
+          throw propertiesError;
         }
 
+        setHasProperties(propertiesCount > 0);
         console.log("Properties count:", propertiesCount);
 
         // Get property IDs for this landlord
@@ -67,6 +108,7 @@ const LandlordDashboard = () => {
           
         if (propertiesDataError) {
           console.error("Error fetching property IDs:", propertiesDataError);
+          throw propertiesDataError;
         }
         
         const propertyIds = propertiesData ? propertiesData.map(prop => prop.id) : [];
@@ -162,6 +204,16 @@ const LandlordDashboard = () => {
           </p>
         </div>
 
+        {!hasProperties && !isLoadingStats && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>No properties found</AlertTitle>
+            <AlertDescription>
+              You haven't added any properties yet. Add your first property to start receiving applications.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card className="relative">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -175,6 +227,16 @@ const LandlordDashboard = () => {
                 {isLoadingStats ? (
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 ) : stats.totalProperties}
+              </div>
+              <div className="mt-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="h-8" 
+                  onClick={() => navigate("/landlord/property/new")}
+                >
+                  Add Property
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -192,10 +254,10 @@ const LandlordDashboard = () => {
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 ) : stats.activeApplications}
               </div>
-              {!isLoadingStats && stats.activeApplications > 0 && (
+              {!isLoadingStats && (
                 <Button 
                   variant="link" 
-                  className="p-0 h-auto text-xs text-primary" 
+                  className="p-0 h-auto text-xs text-primary mt-2" 
                   onClick={() => navigate("/landlord/applications")}
                 >
                   View all
@@ -236,7 +298,7 @@ const LandlordDashboard = () => {
               {!isLoadingStats && stats.pendingOffers > 0 && (
                 <Button 
                   variant="link" 
-                  className="p-0 h-auto text-xs text-primary" 
+                  className="p-0 h-auto text-xs text-primary mt-2" 
                   onClick={() => navigate("/landlord/offers")}
                 >
                   View all
