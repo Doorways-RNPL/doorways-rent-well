@@ -1,9 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { useAuth } from "@/components/AuthProvider";
-import { useUserRole } from "@/components/UserRoleProvider";
 import { ArrowRight, User, Home } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -17,8 +15,14 @@ const rotatingPhrases = [
 const Hero = () => {
   const [phraseIndex, setPhraseIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const { user } = useAuth();
-  const { role } = useUserRole();
+
+  // Check if user already has a role
+  useEffect(() => {
+    const role = localStorage.getItem("user-role");
+    setUserRole(role);
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -64,7 +68,7 @@ const Hero = () => {
                 <>
                   <div className="grid md:grid-cols-2 gap-6 max-w-3xl">
                     <Card className="border-white/20 bg-white/5 hover:bg-white/10 hover:border-primary/50 transition-all cursor-pointer">
-                      <Link to="/apply" className="block h-full">
+                      <Link to="/auth" className="block h-full">
                         <CardHeader className="p-4">
                           <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 mb-2">
                             <User className="h-4 w-4 text-primary" />
@@ -110,7 +114,7 @@ const Hero = () => {
                       asChild 
                       className="text-base px-6 py-5 bg-primary text-black hover:bg-primary/90"
                     >
-                      <Link to="/apply">Start Your Application</Link>
+                      <Link to="/auth">Create an Account</Link>
                     </Button>
                     <Button 
                       size="lg" 
@@ -124,7 +128,7 @@ const Hero = () => {
                 </>
               ) : (
                 <div className="flex flex-col sm:flex-row gap-4">
-                  {role === 'tenant' ? (
+                  {userRole === 'tenant' ? (
                     <>
                       <Button 
                         size="lg" 
@@ -142,14 +146,14 @@ const Hero = () => {
                         <Link to="/tenant/dashboard">View Dashboard</Link>
                       </Button>
                     </>
-                  ) : role === 'landlord' ? (
+                  ) : userRole === 'landlord' ? (
                     <>
                       <Button 
                         size="lg" 
                         asChild 
                         className="text-base px-8 py-6 bg-primary text-black hover:bg-primary/90"
                       >
-                        <Link to="/landlord/property/new">List Your Property</Link>
+                        <Link to="/list-property">List Your Property</Link>
                       </Button>
                       <Button 
                         size="lg" 

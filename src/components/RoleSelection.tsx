@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -67,7 +68,7 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
         
         // If user role is set but no profile exists
         if (role === "tenant") {
-          navigate('/tenant/application');
+          navigate('/apply');
           return;
         } else if (role === "landlord") {
           navigate('/landlord/property/new');
