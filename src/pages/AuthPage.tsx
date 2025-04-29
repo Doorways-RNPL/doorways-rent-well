@@ -33,37 +33,57 @@ export default function AuthPage() {
 
   // Check if user is already authenticated on load and redirect if needed
   useEffect(() => {
+    if (!user || isLoadingRole) {
+      if (!isLoadingRole && !user) {
+        setCheckingExistingData(false);
+      }
+      return;
+    }
+
     const checkUserAndRedirect = async () => {
-      if (!user || isLoadingRole) return;
+      try {
+        console.log("AuthPage: Checking user status:", { user, role });
+        
+        // Get redirect path if one was saved
+        const redirectPath = sessionStorage.getItem('redirectAfterAuth');
+        
+        // If user is already authenticated, check their role and redirect
+        if (role) {
+          switch (role) {
+            case "tenant":
+              // Check if tenant has an application
+              const { data: tenant } = await supabase
+                .from('tenants')
+                .select('id')
+                .eq('user_id', user.id)
+                .maybeSingle();
 
-      // If user is already authenticated, check their role and redirect
-      if (role) {
-        switch (role) {
-          case "tenant":
-            // Check if tenant has an application
-            const { data: tenant } = await supabase
-              .from('tenants')
-              .select('id')
-              .eq('user_id', user.id)
-              .maybeSingle();
-
-            if (tenant) {
-              navigate('/tenant/dashboard');
-            } else {
-              navigate('/apply');
-            }
-            break;
-          case "landlord":
-            navigate('/landlord/dashboard');
-            break;
-          case "admin":
-            navigate('/admin/dashboard');
-            break;
-          default:
-            setAuthCompleted(true);
-            setCheckingExistingData(false);
+              if (tenant) {
+                console.log("Tenant found, redirecting to dashboard");
+                navigate(redirectPath || '/tenant/dashboard');
+              } else {
+                console.log("Tenant role but no tenant found, redirecting to application");
+                navigate('/apply');
+              }
+              break;
+            case "landlord":
+              navigate(redirectPath || '/landlord/dashboard');
+              break;
+            case "admin":
+              navigate(redirectPath || '/admin/dashboard');
+              break;
+            default:
+              setAuthCompleted(true);
+              setCheckingExistingData(false);
+          }
+        } else {
+          // No role yet, show role selection
+          console.log("User authenticated but no role set, showing role selection");
+          setAuthCompleted(true);
+          setCheckingExistingData(false);
         }
-      } else {
+      } catch (error) {
+        console.error("Error checking user status:", error);
         setCheckingExistingData(false);
       }
     };
@@ -132,26 +152,36 @@ export default function AuthPage() {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) {
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Error logging in",
+          description: error.message,
+        });
+        setLoading(false);
+      } else {
+        toast({
+          title: "Welcome back!",
+          description: "You have successfully logged in",
+        });
+        // AuthProvider effect will handle redirects based on role
+        // We'll set authCompleted to trigger role check if needed
+        setAuthCompleted(true);
+      }
+    } catch (error: any) {
+      console.error("Login error:", error);
       toast({
         variant: "destructive",
         title: "Error logging in",
-        description: error.message,
+        description: error.message || "An unexpected error occurred",
       });
       setLoading(false);
-    } else {
-      toast({
-        title: "Welcome back!",
-        description: "You have successfully logged in",
-      });
-      // AuthProvider effect will handle redirects based on role
-      // We'll set authCompleted to trigger role check if needed
-      setAuthCompleted(true);
     }
   };
 

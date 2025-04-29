@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -10,10 +9,15 @@ import { BreadcrumbNav } from "@/components/ui/breadcrumb-nav";
 import { useToast } from "@/components/ui/use-toast";
 import { Eye, EyeOff, Mail, Phone, Lock, User } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from "@/components/AuthProvider";
+import { useUserRole } from "@/components/UserRoleProvider";
+import { supabase } from "@/integrations/supabase/client";
 
 const TenantSignup = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { role, setRole } = useUserRole();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -25,6 +29,72 @@ const TenantSignup = () => {
     password: "",
     confirmPassword: "",
   });
+  const [isCheckingUser, setIsCheckingUser] = useState(true);
+
+  // Check if user is already authenticated and has a role
+  useEffect(() => {
+    const checkUserStatus = async () => {
+      try {
+        // If user is already authenticated
+        if (user) {
+          console.log("TenantSignup: User is already authenticated:", user.id);
+          
+          // Check if user already has tenant profile
+          const { data: tenantData } = await supabase
+            .from('tenants')
+            .select('id')
+            .eq('user_id', user.id)
+            .maybeSingle();
+            
+          if (tenantData) {
+            console.log("User already has tenant profile, redirecting to dashboard");
+            if (role !== "tenant") {
+              await setRole("tenant");
+            }
+            navigate("/tenant/dashboard");
+            return;
+          }
+          
+          // Check if user has submitted an application
+          const { data: applicationData } = await supabase
+            .from('tenant_applications')
+            .select('id')
+            .eq('tenant_email', user.email || "")
+            .maybeSingle();
+            
+          if (applicationData) {
+            console.log("User already has application, redirecting to dashboard");
+            if (role !== "tenant") {
+              await setRole("tenant");
+            }
+            navigate("/tenant/dashboard");
+            return;
+          }
+
+          // If no tenant profile yet, but user is authenticated, prefill form with user data
+          if (user.email) {
+            setFormData(prev => ({
+              ...prev,
+              email: user.email || "",
+              firstName: user.user_metadata?.first_name || "",
+              lastName: user.user_metadata?.last_name || ""
+            }));
+          }
+          
+          // Set role as tenant since they're on the tenant signup page
+          if (role !== "tenant") {
+            await setRole("tenant");
+          }
+        }
+      } catch (error) {
+        console.error("Error checking user status:", error);
+      } finally {
+        setIsCheckingUser(false);
+      }
+    };
+    
+    checkUserStatus();
+  }, [user, navigate, role, setRole]);
 
   // Check if user is coming from role selection
   useEffect(() => {
@@ -35,13 +105,13 @@ const TenantSignup = () => {
       setFormData(prev => ({ ...prev, email: userEmail }));
     }
     
-    if (userRole !== "tenant" && !userEmail) {
+    if (userRole !== "tenant" && !userEmail && !user) {
       toast({
         title: "Information",
         description: "Please select your role before proceeding.",
       });
     }
-  }, [toast]);
+  }, [toast, user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -56,39 +126,74 @@ const TenantSignup = () => {
     setShowConfirmPassword(!showConfirmPassword);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    // Validate form
-    if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.password) {
-      toast({
-        title: "Missing information",
-        description: "Please fill out all required fields.",
-        variant: "destructive",
-      });
-      setIsLoading(false);
-      return;
-    }
+    try {
+      // If user is already authenticated, just update their info and proceed
+      if (user) {
+        // Store in local storage for persistence across pages
+        localStorage.setItem("tenant-email", formData.email || user.email || "");
+        localStorage.setItem("tenant-phone", formData.phone);
+        localStorage.setItem("tenant-firstName", formData.firstName || user.user_metadata?.first_name || "");
+        localStorage.setItem("tenant-lastName", formData.lastName || user.user_metadata?.last_name || "");
+        localStorage.setItem("user-role", "tenant");
+        
+        toast({
+          title: "Information saved!",
+          description: "You can now complete your application.",
+        });
+        
+        // Redirect to the application form
+        navigate("/tenant/application");
+        return;
+      }
     
-    if (formData.password !== formData.confirmPassword) {
-      toast({
-        title: "Passwords don't match",
-        description: "Please ensure both passwords match.",
-        variant: "destructive",
-      });
-      setIsLoading(false);
-      return;
-    }
+      // For new users, validate form
+      if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.password) {
+        toast({
+          title: "Missing information",
+          description: "Please fill out all required fields.",
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      if (formData.password !== formData.confirmPassword) {
+        toast({
+          title: "Passwords don't match",
+          description: "Please ensure both passwords match.",
+        });
+        setIsLoading(false);
+        return;
+      }
 
-    // For demo purposes, we'll simulate a successful signup
-    setTimeout(() => {
+      // Register the user with Supabase
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            first_name: formData.firstName,
+            last_name: formData.lastName
+          }
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
       // Store in local storage for persistence across pages
       localStorage.setItem("tenant-email", formData.email);
       localStorage.setItem("tenant-phone", formData.phone);
       localStorage.setItem("tenant-firstName", formData.firstName);
       localStorage.setItem("tenant-lastName", formData.lastName);
       localStorage.setItem("user-role", "tenant");
+      
+      // Set the role
+      await setRole("tenant");
       
       toast({
         title: "Account created!",
@@ -97,15 +202,38 @@ const TenantSignup = () => {
       
       // Redirect to the application form
       navigate("/tenant/application");
-      
+    } catch (error: any) {
+      console.error("Signup error:", error);
+      toast({
+        variant: "destructive",
+        title: "Error creating account",
+        description: error.message || "An unexpected error occurred"
+      });
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   const breadcrumbItems = [
     { label: "Apply", href: "/apply" },
     { label: "Create Account", active: true },
   ];
+
+  if (isCheckingUser) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <main className="pt-24 pb-16">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="max-w-md mx-auto text-center">
+              <p className="text-foreground/70">Checking account information...</p>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -128,9 +256,13 @@ const TenantSignup = () => {
 
             <Card className="border-primary/20 bg-background/50 shadow-lg">
               <CardHeader className="text-center">
-                <CardTitle className="text-3xl font-bold text-primary">Start Your Tenant Journey</CardTitle>
+                <CardTitle className="text-3xl font-bold text-primary">
+                  {user ? "Complete Your Tenant Profile" : "Start Your Tenant Journey"}
+                </CardTitle>
                 <CardDescription className="text-foreground/70">
-                  Create your account to access affordable housing through our Rent Now, Pay Later solution.
+                  {user 
+                    ? "Enter your details to access affordable housing through our Rent Now, Pay Later solution." 
+                    : "Create your account to access affordable housing through our Rent Now, Pay Later solution."}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -272,18 +404,22 @@ const TenantSignup = () => {
                       </button>
                     </div>
                   </div>
-
+                  
                   <Button 
                     type="submit" 
                     className="w-full" 
                     disabled={isLoading}
                   >
-                    {isLoading ? "Creating account..." : "Create Account & Continue"}
+                    {isLoading 
+                      ? (user ? "Saving information..." : "Creating account...") 
+                      : (user ? "Save & Continue" : "Create Account & Continue")}
                   </Button>
                   
-                  <p className="text-sm text-center text-white/50 mt-4">
-                    Already have an account? <a href="/auth" className="text-primary hover:underline">Log in</a>
-                  </p>
+                  {!user && (
+                    <p className="text-sm text-center text-white/50 mt-4">
+                      Already have an account? <a href="/auth" className="text-primary hover:underline">Log in</a>
+                    </p>
+                  )}
                 </form>
               </CardContent>
             </Card>

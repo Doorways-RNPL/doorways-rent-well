@@ -32,6 +32,12 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
       }
       
       try {
+        console.log("RoleSelection: Checking existing profiles for user:", user.id);
+        
+        // Get redirect path if one was saved
+        const redirectPath = sessionStorage.getItem('redirectAfterAuth');
+        console.log("Redirect path:", redirectPath);
+        
         // Check if tenant profile exists
         const { data: tenantData, error: tenantError } = await supabase
           .from('tenants')
@@ -42,7 +48,7 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
         if (tenantData) {
           console.log("Existing tenant profile found, redirecting to dashboard");
           await setRole("tenant");
-          navigate('/tenant/dashboard');
+          navigate(redirectPath || '/tenant/dashboard');
           return;
         }
         
@@ -56,7 +62,7 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
         if (landlordData) {
           console.log("Existing landlord profile found, redirecting to dashboard");
           await setRole("landlord");
-          navigate('/landlord/dashboard');
+          navigate(redirectPath || '/landlord/dashboard');
           return;
         }
         
@@ -106,6 +112,9 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
       // Set user role in the global context
       await setRole(selectedRole);
 
+      // Get redirect path if one was saved
+      const redirectPath = sessionStorage.getItem('redirectAfterAuth');
+
       if (selectedRole === "landlord") {
         // First check if a landlord profile already exists
         const { data: existingLandlord, error: checkError } = await supabase
@@ -120,7 +129,7 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
 
         if (existingLandlord) {
           // Landlord profile exists, redirect to dashboard
-          navigate("/landlord/dashboard");
+          navigate(redirectPath || "/landlord/dashboard");
           return;
         }
 
@@ -138,7 +147,7 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
           throw profileError;
         }
 
-        navigate("/landlord/property/new");
+        navigate(redirectPath || "/landlord/property/new");
       } else {
         // Tenant flow - check if tenant record exists
         const { data: existingTenant } = await supabase
@@ -148,18 +157,21 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
           .maybeSingle();
           
         if (existingTenant) {
-          navigate("/tenant/dashboard");
+          navigate(redirectPath || "/tenant/dashboard");
           return;
         }
         
         // No tenant record, go to application
         if (email) {
           localStorage.setItem("tenant-email", email);
-          navigate("/tenant/application");
+          navigate(redirectPath || "/tenant/application");
         } else {
-          navigate("/apply");
+          navigate(redirectPath || "/apply");
         }
       }
+      
+      // Clear the redirect path from session storage
+      sessionStorage.removeItem('redirectAfterAuth');
       
       if (onComplete) onComplete();
     } catch (error: any) {

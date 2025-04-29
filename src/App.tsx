@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/components/AuthProvider";
 import { UserRoleProvider } from "@/components/UserRoleProvider";
 import Index from "./pages/Index";
@@ -23,7 +23,7 @@ import PropertyWizard from "./pages/landlord/PropertyWizard";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import { useAuth } from "@/components/AuthProvider";
 import { useUserRole } from "@/components/UserRoleProvider";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const queryClient = new QueryClient({
@@ -41,19 +41,35 @@ const AuthGuard = ({ allowedRoles }: { allowedRoles: string[] }) => {
   const { user, isLoading } = useAuth();
   const { role, isLoadingRole } = useUserRole();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [isChecking, setIsChecking] = useState(true);
   
   useEffect(() => {
     // Skip if still loading auth state
     if (isLoading || isLoadingRole) return;
     
+    console.log("AuthGuard checking:", { user, role, path: location.pathname, allowedRoles });
+    
     // Redirect if not authenticated
     if (!user) {
+      // Store the current path to redirect back after login
+      sessionStorage.setItem('redirectAfterAuth', location.pathname);
+      console.log("User not authenticated, redirecting to auth page");
       navigate('/auth');
+      setIsChecking(false);
       return;
     }
     
-    // Redirect if role not allowed
-    if (role && !allowedRoles.includes(role)) {
+    // Allow access if role is in allowedRoles
+    if (role && allowedRoles.includes(role)) {
+      console.log("User has allowed role, granting access");
+      setIsChecking(false);
+      return;
+    }
+    
+    // Redirect based on role if not allowed
+    if (role) {
+      console.log("User has role but not allowed, redirecting to appropriate dashboard");
       // Redirect based on role
       switch (role) {
         case 'tenant':
@@ -68,14 +84,21 @@ const AuthGuard = ({ allowedRoles }: { allowedRoles: string[] }) => {
         default:
           navigate('/auth');
       }
+    } else {
+      // No role yet, redirect to auth for role selection
+      console.log("User has no role, redirecting to auth for role selection");
+      navigate('/auth');
     }
-  }, [user, role, isLoading, isLoadingRole, navigate, allowedRoles]);
+    
+    setIsChecking(false);
+  }, [user, role, isLoading, isLoadingRole, navigate, allowedRoles, location.pathname]);
   
   // Show loading while checking auth
-  if (isLoading || isLoadingRole) {
+  if (isLoading || isLoadingRole || isChecking) {
     return <div className="container mx-auto pt-24 text-center">Checking authentication...</div>;
   }
   
+  // If we've reached here, the user is authenticated and has permission
   return <Outlet />;
 };
 
