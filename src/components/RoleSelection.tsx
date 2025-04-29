@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -67,7 +68,7 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
         
         // If user role is set but no profile exists
         if (role === "tenant") {
-          navigate('/apply');
+          navigate('/tenant/application');
           return;
         } else if (role === "landlord") {
           navigate('/landlord/property/new');
@@ -149,15 +150,10 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
         navigate(redirectPath || "/landlord/property/new");
       } else {
         // Tenant flow - direct users to application page
-        // If user authenticated and selected tenant role, go straight to application
         localStorage.setItem("user-role", "tenant");
         
-        // Skip the signup process if we already have user info
-        if (email || user.email) {
-          navigate('/tenant/application');
-        } else {
-          navigate('/apply');
-        }
+        // If we have email info, skip directly to the application page
+        navigate('/tenant/application');
       }
       
       // Clear the redirect path from session storage

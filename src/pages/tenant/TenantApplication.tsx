@@ -301,7 +301,7 @@ const TenantApplication = () => {
       };
       
       // Submit application to database
-      const { error: applicationError } = await supabase
+      const { data: applicationResult, error: applicationError } = await supabase
         .from('tenant_applications')
         .insert({
           tenant_email: user.email || localStorage.getItem("tenant-email") || '',
@@ -314,12 +314,16 @@ const TenantApplication = () => {
           additional_info: additionalInfo,
           status: 'pending',
           message: "I would like to apply for this property."
-        });
+        })
+        .select('id')
+        .single();
         
       if (applicationError) {
         console.error("Error submitting application:", applicationError);
         throw applicationError;
       }
+
+      const applicationId = applicationResult?.id;
 
       // Handle file uploads if tenant record was created
       if (tenantId) {
@@ -369,23 +373,32 @@ const TenantApplication = () => {
       });
       
       // Store the applicationData in localStorage for the dashboard 
-      // This is just for demo purposes - in a real app, we'd fetch from the database
+      // Enhanced localStorage with more complete application information
       localStorage.setItem("tenant-application", JSON.stringify({
+        id: applicationId, // Store the application ID
         firstName: applicationData.firstName,
         lastName: applicationData.lastName,
+        propertyId: applicationData.propertyId,
         propertyAddress: applicationData.propertyAddress,
         propertyCity: applicationData.propertyCity,
         monthlyRent: applicationData.monthlyRent,
         leaseStartDate: applicationData.leaseStartDate,
         landlordName: applicationData.landlordName,
-        landlordEmail: applicationData.landlordEmail
+        landlordEmail: applicationData.landlordEmail,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+        tenantId: tenantId
       }));
       
       // Set initial application status
       localStorage.setItem("application-status", "pending");
+      localStorage.setItem("application-submitted", "true");
       
-      // Redirect to dashboard after submission
-      navigate("/tenant/dashboard");
+      // Add a short delay before redirecting to ensure database writes complete
+      setTimeout(() => {
+        // Redirect to dashboard after submission
+        navigate("/tenant/dashboard");
+      }, 1000);
     } catch (error: any) {
       console.error("Error submitting application:", error);
       toast({

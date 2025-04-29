@@ -30,6 +30,19 @@ interface ApplicationData {
   processed_at?: string;
 }
 
+interface LocalApplicationData {
+  id?: string;
+  firstName: string;
+  lastName: string;
+  propertyId?: string;
+  propertyAddress: string;
+  propertyCity: string;
+  monthlyRent: string;
+  status: string;
+  createdAt: string;
+  tenantId?: string;
+}
+
 const TenantDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -40,6 +53,9 @@ const TenantDashboard = () => {
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [isTenant, setIsTenant] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [isRecentlySubmitted, setIsRecentlySubmitted] = useState<boolean>(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const [hasLocalApplication, setHasLocalApplication] = useState(false);
   
   // Handle rewards tier calculation
   const calculateRewardsTier = () => {
@@ -52,6 +68,29 @@ const TenantDashboard = () => {
   };
 
   const { currentTier, nextTier, progressPercentage } = calculateRewardsTier();
+
+  // Check for recently submitted application
+  useEffect(() => {
+    const appSubmitted = localStorage.getItem("application-submitted");
+    if (appSubmitted === "true") {
+      setIsRecentlySubmitted(true);
+      // Clear the flag after checking
+      localStorage.removeItem("application-submitted");
+    }
+
+    // Check if there's application data in localStorage
+    const localAppData = localStorage.getItem("tenant-application");
+    if (localAppData) {
+      try {
+        const parsedData = JSON.parse(localAppData);
+        if (parsedData && parsedData.propertyAddress) {
+          setHasLocalApplication(true);
+        }
+      } catch (error) {
+        console.error("Error parsing local application data:", error);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -117,6 +156,33 @@ const TenantDashboard = () => {
         }
 
         if (!tenant) {
+          // If no tenant record is found but we have local application data,
+          // the user may have just submitted an application
+          if (isRecentlySubmitted && hasLocalApplication) {
+            console.log("Application recently submitted, showing pending application view");
+            setLoading(false);
+            
+            // Use the local application data as a fallback
+            const localApp = JSON.parse(localStorage.getItem("tenant-application") || "{}");
+            if (localApp && localApp.propertyAddress) {
+              const tempAppData: ApplicationData = {
+                id: localApp.id || "pending",
+                status: "pending",
+                property_id: localApp.propertyId || "",
+                tenant_first_name: localApp.firstName || "",
+                tenant_last_name: localApp.lastName || "",
+                property: {
+                  address: localApp.propertyAddress || "",
+                  city: localApp.propertyCity || "",
+                  rent_amount: parseFloat(localApp.monthlyRent) || 0
+                },
+                created_at: localApp.createdAt || new Date().toISOString()
+              };
+              setApplicationData(tempAppData);
+              return;
+            }
+          }
+          
           console.log("No tenant record found, redirecting to application");
           navigate("/apply");
           return;
@@ -144,12 +210,77 @@ const TenantDashboard = () => {
           console.error("Error fetching application:", applicationError);
           setError(`Error fetching application: ${applicationError.message}`);
           setLoading(false);
+          
+          // If this is a recent submission and we have retries left, try again
+          if (isRecentlySubmitted && retryCount < 3) {
+            console.log(`Retrying application fetch, attempt ${retryCount + 1}/3`);
+            setTimeout(() => {
+              setRetryCount(prev => prev + 1);
+            }, 1500);
+            return;
+          }
+          
+          // If we're out of retries but have local data, use it as fallback
+          if (hasLocalApplication) {
+            const localApp = JSON.parse(localStorage.getItem("tenant-application") || "{}");
+            if (localApp && localApp.propertyAddress) {
+              const tempAppData: ApplicationData = {
+                id: localApp.id || "pending",
+                status: "pending",
+                property_id: localApp.propertyId || "",
+                tenant_first_name: localApp.firstName || "",
+                tenant_last_name: localApp.lastName || "",
+                property: {
+                  address: localApp.propertyAddress || "",
+                  city: localApp.propertyCity || "",
+                  rent_amount: parseFloat(localApp.monthlyRent) || 0
+                },
+                created_at: localApp.createdAt || new Date().toISOString()
+              };
+              setApplicationData(tempAppData);
+            }
+          }
+          
           return;
         }
 
         if (!application) {
-          console.log("No application found, redirecting to apply");
-          navigate("/apply");
+          // Check if we have a local application that hasn't been found yet
+          if (isRecentlySubmitted && hasLocalApplication && retryCount < 3) {
+            console.log("Recently submitted application not found in database, retrying...");
+            setTimeout(() => {
+              setRetryCount(prev => prev + 1);
+            }, 1500);
+            return;
+          }
+          
+          // Use local application data as fallback if available
+          if (hasLocalApplication) {
+            console.log("Using local application data as fallback");
+            const localApp = JSON.parse(localStorage.getItem("tenant-application") || "{}");
+            if (localApp && localApp.propertyAddress) {
+              const tempAppData: ApplicationData = {
+                id: localApp.id || "pending",
+                status: "pending",
+                property_id: localApp.propertyId || "",
+                tenant_first_name: localApp.firstName || "",
+                tenant_last_name: localApp.lastName || "",
+                property: {
+                  address: localApp.propertyAddress || "",
+                  city: localApp.propertyCity || "",
+                  rent_amount: parseFloat(localApp.monthlyRent) || 0
+                },
+                created_at: localApp.createdAt || new Date().toISOString()
+              };
+              setApplicationData(tempAppData);
+            } else {
+              console.log("No application found, redirecting to apply");
+              navigate("/tenant/application");
+            }
+          } else {
+            console.log("No application found, redirecting to apply");
+            navigate("/tenant/application");
+          }
           return;
         }
 
@@ -197,6 +328,19 @@ const TenantDashboard = () => {
                 title: "Application Status Updated",
                 description: `Your application status has changed to ${payload.new.status}.`,
               });
+              
+              // Update localStorage status
+              const localApp = localStorage.getItem("tenant-application");
+              if (localApp) {
+                try {
+                  const parsedApp = JSON.parse(localApp);
+                  parsedApp.status = payload.new.status;
+                  localStorage.setItem("tenant-application", JSON.stringify(parsedApp));
+                  localStorage.setItem("application-status", payload.new.status);
+                } catch (error) {
+                  console.error("Error updating local storage:", error);
+                }
+              }
             }
           }
         })
@@ -214,7 +358,7 @@ const TenantDashboard = () => {
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [navigate, toast, user, tenantId, authLoading, isLoadingRole, role, setRole]);
+  }, [navigate, toast, user, tenantId, authLoading, isLoadingRole, role, setRole, retryCount, isRecentlySubmitted, hasLocalApplication]);
 
   // Get status badge styling
   const getStatusBadge = () => {
@@ -271,7 +415,7 @@ const TenantDashboard = () => {
     navigate("/tenant/application");
   };
 
-  if (authLoading || isLoadingRole || (loading && isTenant)) {
+  if (authLoading || isLoadingRole || (loading && isTenant && !isRecentlySubmitted)) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
@@ -287,7 +431,7 @@ const TenantDashboard = () => {
   }
 
   // User is logged in but doesn't have a tenant application yet
-  if (isTenant && !applicationData && !loading) {
+  if (isTenant && !applicationData && !loading && !hasLocalApplication) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
@@ -320,6 +464,16 @@ const TenantDashboard = () => {
 
           {/* Debug info during development */}
           {error && <div className="bg-red-500/20 p-4 mb-6 rounded-lg text-white">{error}</div>}
+          
+          {isRecentlySubmitted && (
+            <div className="bg-green-500/20 p-4 mb-6 rounded-lg text-white flex items-start">
+              <Info size={20} className="mr-2 flex-shrink-0 mt-1" />
+              <div>
+                <p className="font-semibold">Application successfully submitted!</p>
+                <p>Your application is now being processed. You'll see updates here as it progresses.</p>
+              </div>
+            </div>
+          )}
 
           {/* Application Status Section */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
