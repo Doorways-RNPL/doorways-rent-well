@@ -4,7 +4,7 @@ import { useAuth } from "./AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "./ui/use-toast";
 
-type UserRole = "tenant" | "landlord" | null;
+type UserRole = "tenant" | "landlord" | "admin" | null;
 
 type UserRoleContextType = {
   role: UserRole;
