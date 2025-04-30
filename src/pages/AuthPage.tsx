@@ -9,6 +9,7 @@ import RoleSelection from "@/components/role-selection/RoleSelection";
 import LoginForm from "@/components/auth/LoginForm";
 import SignupForm from "@/components/auth/SignupForm";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 
 const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -17,10 +18,12 @@ const AuthPage = () => {
   const [email, setEmail] = useState(""); // Keep email for role selection
   const [hasApplication, setHasApplication] = useState(false);
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
+  const [hasTenantProfile, setHasTenantProfile] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isLoading } = useAuth();
   const { role, isLoadingRole } = useUserRole();
+  const { toast } = useToast();
 
   useEffect(() => {
     // Check if the location state has the 'showSignup' property
@@ -40,8 +43,8 @@ const AuthPage = () => {
   }, [location.state]);
 
   useEffect(() => {
-    // Check if a logged-in user has an application (for tenants)
-    const checkApplicationStatus = async () => {
+    // Check if a logged-in user has an application (for tenants) and profile
+    const checkUserStatus = async () => {
       if (user && role === "tenant" && !isLoadingRole) {
         setIsCheckingStatus(true);
         try {
@@ -51,6 +54,8 @@ const AuthPage = () => {
             .select('id')
             .eq('user_id', user.id)
             .maybeSingle();
+
+          setHasTenantProfile(!!tenant);
 
           if (tenant) {
             // Check for applications
@@ -70,7 +75,7 @@ const AuthPage = () => {
       }
     };
 
-    checkApplicationStatus();
+    checkUserStatus();
   }, [user, role, isLoadingRole]);
 
   const toggleAuthMode = () => {
@@ -98,7 +103,20 @@ const AuthPage = () => {
   };
 
   const handleNavigateToApplication = () => {
-    navigate("/tenant/application");
+    // Check if the tenant has a profile first
+    if (!hasTenantProfile) {
+      toast({
+        title: "Complete Your Profile",
+        description: "You need to complete your tenant profile first before applying.",
+      });
+      navigate("/tenant-signup");
+    } else {
+      navigate("/tenant/application");
+    }
+  };
+
+  const handleCompleteProfile = () => {
+    navigate("/tenant-signup");
   };
 
   // Show dashboard buttons for authenticated users
@@ -113,14 +131,25 @@ const AuthPage = () => {
         <p className="text-center text-muted-foreground">You are already logged in as a {role}.</p>
         
         <div className="space-y-4">
-          <Button 
-            onClick={handleNavigateToDashboard} 
-            className="w-full"
-          >
-            Go to {role} Dashboard
-          </Button>
+          {role === "tenant" && !hasTenantProfile && (
+            <Button 
+              onClick={handleCompleteProfile} 
+              className="w-full"
+            >
+              Complete Your Profile
+            </Button>
+          )}
           
-          {role === "tenant" && !hasApplication && !isCheckingStatus && (
+          {(role !== "tenant" || hasTenantProfile) && (
+            <Button 
+              onClick={handleNavigateToDashboard} 
+              className="w-full"
+            >
+              Go to {role} Dashboard
+            </Button>
+          )}
+          
+          {role === "tenant" && !hasApplication && !isCheckingStatus && hasTenantProfile && (
             <Button 
               onClick={handleNavigateToApplication} 
               variant="outline" 

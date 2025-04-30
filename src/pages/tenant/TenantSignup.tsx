@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -205,10 +206,22 @@ const TenantSignup = () => {
     }
   };
 
-  const breadcrumbItems = [
-    { label: "Apply", href: "/apply" },
-    { label: "Create Account", active: true },
-  ];
+  // Determine if this is a new user signup or existing user completing profile
+  const isExistingUser = !!user;
+  
+  const getBreadcrumbItems = () => {
+    if (isExistingUser) {
+      return [
+        { label: "Apply", href: "/apply" },
+        { label: "Complete Profile", active: true },
+      ];
+    } else {
+      return [
+        { label: "Apply", href: "/apply" },
+        { label: "Create Account", active: true },
+      ];
+    }
+  };
 
   if (isCheckingUser) {
     return (
@@ -232,14 +245,14 @@ const TenantSignup = () => {
       <main className="pt-24 pb-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-md mx-auto">
-            <BreadcrumbNav items={breadcrumbItems} />
+            <BreadcrumbNav items={getBreadcrumbItems()} />
             
             <div className="mb-6">
               <div className="w-full bg-white/10 rounded-full h-2 mb-2">
                 <div className="bg-primary h-2 rounded-full" style={{ width: "33%" }}></div>
               </div>
               <div className="flex justify-between text-xs text-white/60">
-                <span>Create Account</span>
+                <span>{isExistingUser ? "Complete Profile" : "Create Account"}</span>
                 <span>Basic Info</span>
                 <span>Complete</span>
               </div>
@@ -248,11 +261,11 @@ const TenantSignup = () => {
             <Card className="border-primary/20 bg-background/50 shadow-lg">
               <CardHeader className="text-center">
                 <CardTitle className="text-3xl font-bold text-primary">
-                  {user ? "Continue as a Tenant" : "Apply as a Tenant"}
+                  {isExistingUser ? "Complete Your Tenant Profile" : "Apply as a Tenant"}
                 </CardTitle>
                 <CardDescription className="text-foreground/70">
-                  {user 
-                    ? "Enter your details to access affordable housing through our Rent Now, Pay Later solution." 
+                  {isExistingUser 
+                    ? "Complete your profile details to access affordable housing through our Rent Now, Pay Later solution." 
                     : "Create your account to access affordable housing through our Rent Now, Pay Later solution."}
                 </CardDescription>
               </CardHeader>
@@ -407,8 +420,8 @@ const TenantSignup = () => {
                     disabled={isLoading}
                   >
                     {isLoading 
-                      ? (user ? "Saving information..." : "Creating account...") 
-                      : (user ? "Save & Continue" : "Create Account & Continue")}
+                      ? (isExistingUser ? "Saving information..." : "Creating account...") 
+                      : (isExistingUser ? "Complete Profile" : "Create Account & Continue")}
                   </Button>
                   
                   {!user && (

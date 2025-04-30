@@ -4,6 +4,7 @@ import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/components/AuthProvider";
 import { useUserRole } from "@/components/UserRoleProvider";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 
 // Enhanced AuthGuard component for protecting routes
 export const AuthGuard = ({ allowedRoles }: { allowedRoles: string[] }) => {
@@ -12,6 +13,7 @@ export const AuthGuard = ({ allowedRoles }: { allowedRoles: string[] }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isChecking, setIsChecking] = useState(true);
+  const { toast } = useToast();
   
   useEffect(() => {
     // Skip if still loading auth state
@@ -52,6 +54,10 @@ export const AuthGuard = ({ allowedRoles }: { allowedRoles: string[] }) => {
             
           if (!tenant) {
             console.log("No tenant profile found, redirecting to signup");
+            toast({
+              title: "Profile Required",
+              description: "Please complete your profile information to continue.",
+            });
             navigate('/tenant-signup');
             setIsChecking(false);
             return;
@@ -70,6 +76,10 @@ export const AuthGuard = ({ allowedRoles }: { allowedRoles: string[] }) => {
             
           if (!landlord) {
             console.log("No landlord profile found, redirecting to property wizard");
+            toast({
+              title: "Profile Required",
+              description: "Please complete your property information to continue.",
+            });
             navigate('/landlord/property/new');
             setIsChecking(false);
             return;
@@ -102,7 +112,7 @@ export const AuthGuard = ({ allowedRoles }: { allowedRoles: string[] }) => {
     };
     
     checkAccess();
-  }, [user, role, isLoading, isLoadingRole, navigate, allowedRoles, location.pathname]);
+  }, [user, role, isLoading, isLoadingRole, navigate, allowedRoles, location.pathname, toast]);
   
   // Show loading while checking auth
   if (isLoading || isLoadingRole || isChecking) {

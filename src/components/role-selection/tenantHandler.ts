@@ -52,6 +52,7 @@ export async function handleTenantContinue(
     const firstName = localStorage.getItem("tenant-firstName") || "";
     const lastName = localStorage.getItem("tenant-lastName") || "";
     const email = localStorage.getItem("tenant-email") || user.email;
+    const phone = localStorage.getItem("tenant-phone") || "";
     
     try {
       const { data: newTenant, error } = await supabase
@@ -60,6 +61,7 @@ export async function handleTenantContinue(
           first_name: firstName,
           last_name: lastName,
           email: email,
+          phone: phone,
           user_id: user.id
         })
         .select('id')
@@ -72,7 +74,7 @@ export async function handleTenantContinue(
       navigate(redirectPath || '/tenant/application');
     } catch (error) {
       console.error("Error creating tenant profile:", error);
-      navigate(redirectPath || '/tenant-signup');
+      navigate('/tenant-signup');
     }
   } else {
     // No basic info yet, go to signup page first
