@@ -45,22 +45,63 @@ export const AuthGuard = ({ allowedRoles }: { allowedRoles: string[] }) => {
         console.log("User has allowed role, checking profile status");
         
         // For tenant role, check if there's a profile and handle accordingly
-        if (role === 'tenant' && location.pathname !== '/tenant-signup') {
+        if (role === 'tenant') {
           const { data: tenant } = await supabase
             .from('tenants')
             .select('id')
             .eq('user_id', user.id)
             .maybeSingle();
             
-          if (!tenant) {
-            console.log("No tenant profile found, redirecting to signup");
-            toast({
-              title: "Profile Required",
-              description: "Please complete your profile information to continue.",
-            });
-            navigate('/tenant-signup');
-            setIsChecking(false);
-            return;
+          if (!tenant && location.pathname !== '/tenant-signup') {
+            console.log("No tenant profile found, attempting to auto-create profile");
+            
+            // Try to auto-create tenant profile
+            try {
+              const firstName = localStorage.getItem("tenant-firstName") || 
+                               user.user_metadata?.first_name || '';
+              const lastName = localStorage.getItem("tenant-lastName") || 
+                               user.user_metadata?.last_name || '';
+              const email = user.email || localStorage.getItem("tenant-email") || '';
+              const phone = localStorage.getItem("tenant-phone") || '';
+              
+              // Only auto-create if we have minimum required data
+              if (firstName && lastName && email) {
+                const { data: newTenant, error } = await supabase
+                  .from('tenants')
+                  .insert({
+                    first_name: firstName,
+                    last_name: lastName,
+                    email: email,
+                    phone: phone,
+                    user_id: user.id
+                  })
+                  .select('id')
+                  .single();
+                  
+                if (!error && newTenant) {
+                  console.log("Tenant profile auto-created:", newTenant.id);
+                  setIsChecking(false);
+                  return;
+                } else {
+                  console.error("Error auto-creating tenant profile:", error);
+                }
+              }
+              
+              // If profile auto-creation fails or lacks data, redirect to signup
+              console.log("Tenant profile auto-creation failed, redirecting to signup");
+              toast({
+                title: "Profile Required",
+                description: "Please complete your profile information to continue.",
+              });
+              navigate('/tenant-signup');
+              setIsChecking(false);
+              return;
+            } catch (error) {
+              console.error("Error in tenant profile auto-creation:", error);
+              navigate('/tenant-signup');
+              setIsChecking(false);
+              return;
+            }
           }
         }
         

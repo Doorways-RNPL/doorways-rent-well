@@ -102,21 +102,75 @@ const AuthPage = () => {
     }
   };
 
-  const handleNavigateToApplication = () => {
-    // Check if the tenant has a profile first
-    if (!hasTenantProfile) {
+  const handleNavigateToApplication = async () => {
+    if (role !== "tenant") {
       toast({
-        title: "Complete Your Profile",
-        description: "You need to complete your tenant profile first before applying.",
+        title: "Incorrect Role",
+        description: "You need to have tenant role to access the application form.",
       });
-      navigate("/tenant-signup");
-    } else {
-      navigate("/tenant/application");
+      return;
     }
-  };
-
-  const handleCompleteProfile = () => {
-    navigate("/tenant-signup");
+    
+    try {
+      // Check if the tenant has a profile
+      let tenantId;
+      const { data: tenant } = await supabase
+        .from('tenants')
+        .select('id')
+        .eq('user_id', user?.id || '')
+        .maybeSingle();
+      
+      // If no profile, create one automatically
+      if (!tenant && user) {
+        const firstName = localStorage.getItem("tenant-firstName") || 
+                         user.user_metadata?.first_name || '';
+        const lastName = localStorage.getItem("tenant-lastName") || 
+                        user.user_metadata?.last_name || '';
+        const email = user.email || localStorage.getItem("tenant-email") || '';
+        const phone = localStorage.getItem("tenant-phone") || '';
+        
+        // Only create if we have minimum required data
+        if (firstName && lastName && email) {
+          const { data: newTenant, error } = await supabase
+            .from('tenants')
+            .insert({
+              first_name: firstName,
+              last_name: lastName,
+              email: email,
+              phone: phone,
+              user_id: user.id
+            })
+            .select('id')
+            .single();
+            
+          if (error) {
+            throw error;
+          }
+          
+          tenantId = newTenant?.id;
+          console.log("Tenant profile auto-created before application:", tenantId);
+        } else {
+          toast({
+            title: "Profile Information Required",
+            description: "We need more information to create your profile.",
+          });
+          navigate("/tenant-signup");
+          return;
+        }
+      } else {
+        tenantId = tenant?.id;
+      }
+      
+      // Now redirect to application
+      navigate("/tenant/application");
+    } catch (error: any) {
+      console.error("Error handling application navigation:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Something went wrong, please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Show dashboard buttons for authenticated users
@@ -125,41 +179,47 @@ const AuthPage = () => {
       return null;
     }
 
-    return (
-      <div className="p-6 space-y-6">
-        <h2 className="text-2xl font-semibold text-center text-primary">Welcome Back!</h2>
-        <p className="text-center text-muted-foreground">You are already logged in as a {role}.</p>
-        
-        <div className="space-y-4">
-          {role === "tenant" && !hasTenantProfile && (
-            <Button 
-              onClick={handleCompleteProfile} 
-              className="w-full"
-            >
-              Complete Your Profile
-            </Button>
-          )}
+    // Determine actions based on role
+    if (role === "tenant") {
+      return (
+        <div className="p-6 space-y-6">
+          <h2 className="text-2xl font-semibold text-center text-primary">Welcome Back!</h2>
+          <p className="text-center text-muted-foreground">You are logged in as a tenant.</p>
           
-          {(role !== "tenant" || hasTenantProfile) && (
+          <div className="space-y-4">
             <Button 
               onClick={handleNavigateToDashboard} 
               className="w-full"
             >
-              Go to {role} Dashboard
+              Go to Tenant Dashboard
             </Button>
-          )}
+            
+            {(!hasApplication && !isCheckingStatus) && (
+              <Button 
+                onClick={handleNavigateToApplication} 
+                variant="outline" 
+                className="w-full"
+              >
+                Create New Application
+              </Button>
+            )}
+          </div>
+        </div>
+      );
+    } else if (role === "landlord") {
+      return (
+        <div className="p-6 space-y-6">
+          <h2 className="text-2xl font-semibold text-center text-primary">Welcome Back!</h2>
+          <p className="text-center text-muted-foreground">You are logged in as a landlord.</p>
           
-          {role === "tenant" && !hasApplication && !isCheckingStatus && hasTenantProfile && (
+          <div className="space-y-4">
             <Button 
-              onClick={handleNavigateToApplication} 
-              variant="outline" 
+              onClick={handleNavigateToDashboard} 
               className="w-full"
             >
-              Create New Application
+              Go to Landlord Dashboard
             </Button>
-          )}
-          
-          {role === "landlord" && (
+            
             <Button 
               onClick={() => navigate("/landlord/property/new")} 
               variant="outline" 
@@ -167,10 +227,38 @@ const AuthPage = () => {
             >
               Add New Property
             </Button>
-          )}
+          </div>
         </div>
-      </div>
-    );
+      );
+    } else if (role === "admin") {
+      return (
+        <div className="p-6 space-y-6">
+          <h2 className="text-2xl font-semibold text-center text-primary">Welcome Back!</h2>
+          <p className="text-center text-muted-foreground">You are logged in as an admin.</p>
+          
+          <Button 
+            onClick={handleNavigateToDashboard} 
+            className="w-full"
+          >
+            Go to Admin Dashboard
+          </Button>
+        </div>
+      );
+    } else {
+      return (
+        <div className="p-6 space-y-6">
+          <h2 className="text-2xl font-semibold text-center text-primary">Welcome!</h2>
+          <p className="text-center text-muted-foreground">Please select a role to continue.</p>
+          
+          <Button 
+            onClick={() => setShowRoleSelection(true)} 
+            className="w-full"
+          >
+            Select Role
+          </Button>
+        </div>
+      );
+    }
   };
 
   return (

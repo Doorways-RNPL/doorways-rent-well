@@ -40,45 +40,58 @@ export async function handleTenantContinue(
     }
   }
 
-  // Check if we have tenant info in localStorage
-  const hasBasicInfo = localStorage.getItem("tenant-firstName") && 
-                        localStorage.getItem("tenant-lastName") && 
-                        localStorage.getItem("tenant-email");
-  
-  console.log("Tenant basic info in localStorage:", hasBasicInfo);
-                        
-  if (hasBasicInfo) {
-    // If we have basic info, create tenant profile automatically
-    const firstName = localStorage.getItem("tenant-firstName") || "";
-    const lastName = localStorage.getItem("tenant-lastName") || "";
-    const email = localStorage.getItem("tenant-email") || user.email;
-    const phone = localStorage.getItem("tenant-phone") || "";
+  // No tenant profile exists, automatically create one from metadata and localStorage
+  try {
+    // Get user information from localStorage or user metadata
+    const firstName = localStorage.getItem("tenant-firstName") || 
+                      user.user_metadata?.first_name || 
+                      '';
+                      
+    const lastName = localStorage.getItem("tenant-lastName") || 
+                     user.user_metadata?.last_name || 
+                     '';
+                     
+    const email = localStorage.getItem("tenant-email") || 
+                  user.email || 
+                  '';
+                  
+    const phone = localStorage.getItem("tenant-phone") || 
+                  user.user_metadata?.phone || 
+                  '';
     
-    try {
-      const { data: newTenant, error } = await supabase
-        .from('tenants')
-        .insert({
-          first_name: firstName,
-          last_name: lastName,
-          email: email,
-          phone: phone,
-          user_id: user.id
-        })
-        .select('id')
-        .single();
-        
-      if (error) throw error;
+    if (!firstName || !lastName) {
+      console.log("Insufficient profile data, redirecting to tenant signup");
+      navigate('/tenant-signup');
+      return;
+    }
+    
+    console.log("Creating new tenant profile with data:", { firstName, lastName, email, phone });
+    
+    // Create tenant profile
+    const { data: newTenant, error } = await supabase
+      .from('tenants')
+      .insert({
+        first_name: firstName,
+        last_name: lastName,
+        email: email,
+        phone: phone,
+        user_id: user.id
+      })
+      .select('id')
+      .single();
       
-      // Direct to application page
-      console.log("Tenant profile created, redirecting to application");
-      navigate(redirectPath || '/tenant/application');
-    } catch (error) {
+    if (error) {
       console.error("Error creating tenant profile:", error);
       navigate('/tenant-signup');
+      return;
     }
-  } else {
-    // No basic info yet, go to signup page first
-    console.log("No basic info yet, redirecting to tenant signup");
+    
+    console.log("New tenant profile created:", newTenant.id);
+    
+    // Direct user to application page
+    navigate(redirectPath || '/tenant/application');
+  } catch (error) {
+    console.error("Error during tenant profile creation:", error);
     navigate('/tenant-signup');
   }
 }
@@ -116,9 +129,56 @@ export async function handleExistingTenantRole(
     }
     return;
   } else {
-    // Tenant role but no profile, go to signup
-    console.log("Tenant role but no profile, going to signup");
-    navigate('/tenant-signup');
-    return;
+    // No tenant profile, let's create one automatically
+    try {
+      const firstName = localStorage.getItem("tenant-firstName") || 
+                        user.user_metadata?.first_name || 
+                        '';
+                        
+      const lastName = localStorage.getItem("tenant-lastName") || 
+                      user.user_metadata?.last_name || 
+                      '';
+                      
+      const email = localStorage.getItem("tenant-email") || 
+                    user.email || 
+                    '';
+                    
+      const phone = localStorage.getItem("tenant-phone") || 
+                    user.user_metadata?.phone || 
+                    '';
+      
+      if (!firstName || !lastName) {
+        console.log("Insufficient profile data for auto-creation, redirecting to tenant signup");
+        navigate('/tenant-signup');
+        return;
+      }
+      
+      console.log("Auto-creating tenant profile with data:", { firstName, lastName, email, phone });
+      
+      // Create tenant profile
+      const { data: newTenant, error } = await supabase
+        .from('tenants')
+        .insert({
+          first_name: firstName,
+          last_name: lastName,
+          email: email,
+          phone: phone,
+          user_id: user.id
+        })
+        .select('id')
+        .single();
+        
+      if (error) {
+        console.error("Error auto-creating tenant profile:", error);
+        navigate('/tenant-signup');
+        return;
+      }
+      
+      console.log("Tenant profile auto-created, redirecting to application");
+      navigate(redirectPath || '/tenant/application');
+    } catch (error) {
+      console.error("Error during tenant profile auto-creation:", error);
+      navigate('/tenant-signup');
+    }
   }
 }

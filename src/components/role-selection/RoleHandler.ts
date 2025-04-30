@@ -1,4 +1,3 @@
-
 import { User } from "@supabase/supabase-js";
 import { NavigateFunction } from "react-router-dom";
 import { UserRole } from "./types";
