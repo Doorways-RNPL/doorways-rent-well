@@ -183,6 +183,7 @@ const Navbar = () => {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-sm border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
+          {/* Logo and site name */}
           <div className="flex-shrink-0 flex items-center">
             <Link to="/" className="flex items-center space-x-3">
               <div className="relative h-10 w-10 flex items-center justify-center">
@@ -212,6 +213,7 @@ const Navbar = () => {
             </Link>
           </div>
 
+          {/* Desktop menu */}
           <div className="hidden md:flex items-center space-x-8">
             <Link to="/how-it-works" className={cn(
               "text-white/70 hover:text-primary transition-colors",
@@ -240,6 +242,7 @@ const Navbar = () => {
             {dashboardLink}
           </div>
           
+          {/* Auth buttons for desktop */}
           <div className="hidden md:flex items-center space-x-4">
             {user ? (
               <Button variant="outline" onClick={handleLogout} className="border-white/20 text-white hover:bg-white/10">
@@ -266,15 +269,13 @@ const Navbar = () => {
                     <DropdownMenuItem asChild>
                       <Link to="/auth" state={{ showSignup: true }} className="cursor-pointer">Sign Up (Choose Role)</Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/auth" state={{ showSignup: true, intendedRole: 'admin' }} className="cursor-pointer">Admin Access</Link>
-                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </>
             )}
           </div>
           
+          {/* Mobile menu button */}
           <div className="md:hidden">
             <button
               onClick={toggleMenu}
@@ -358,9 +359,6 @@ const Navbar = () => {
                     </Button>
                     <Button asChild variant="ghost" className="w-full justify-center">
                       <Link to="/auth" state={{ showSignup: true, intendedRole: 'landlord' }} onClick={closeMenu}>List Your Property</Link>
-                    </Button>
-                    <Button asChild variant="ghost" className="w-full justify-center">
-                      <Link to="/auth" state={{ showSignup: true, intendedRole: 'admin' }} onClick={closeMenu}>Admin Access</Link>
                     </Button>
                   </div>
                 </>

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -52,8 +53,9 @@ export default function AuthPage() {
       try {
         console.log("AuthPage: Checking user status:", { user, role, showRoleSelection });
         
-        // If showRoleSelection is true, skip redirect
+        // If showRoleSelection is explicitly set to true, show role selection regardless of other factors
         if (showRoleSelection) {
+          console.log("showRoleSelection is true, showing role selection");
           setAuthCompleted(true);
           setCheckingExistingData(false);
           return;
@@ -62,44 +64,20 @@ export default function AuthPage() {
         // Get redirect path if one was saved
         const redirectPath = sessionStorage.getItem('redirectAfterAuth');
         
-        // If user is already authenticated, check their role and redirect
+        // If user is already authenticated and has a role, check their status and redirect
         if (role) {
           switch (role) {
             case "tenant":
-              // Check if tenant has an application
-              const { data: tenant } = await supabase
-                .from('tenants')
-                .select('id')
-                .eq('user_id', user.id)
-                .maybeSingle();
-
-              if (tenant) {
-                // Check if tenant has applications
-                const { count } = await supabase
-                  .from('tenant_applications')
-                  .select('id', { count: 'exact' })
-                  .eq('tenant_id', tenant.id)
-                  .limit(1);
-                  
-                if (count && count > 0) {
-                  console.log("Tenant found with application, redirecting to dashboard");
-                  navigate(redirectPath || '/tenant/dashboard');
-                } else {
-                  console.log("Tenant found without application, redirecting to application");
-                  navigate('/tenant/application');
-                }
-              } else {
-                console.log("Tenant role but no tenant found, redirecting to application");
-                navigate('/tenant/application');
-              }
+              await handleTenantRedirect(redirectPath);
               break;
             case "landlord":
-              navigate(redirectPath || '/landlord/dashboard');
+              await handleLandlordRedirect(redirectPath);
               break;
             case "admin":
               navigate(redirectPath || '/admin/dashboard');
               break;
             default:
+              // No recognized role, show role selection
               setAuthCompleted(true);
               setCheckingExistingData(false);
           }
@@ -112,6 +90,55 @@ export default function AuthPage() {
       } catch (error) {
         console.error("Error checking user status:", error);
         setCheckingExistingData(false);
+      }
+    };
+
+    // Helper function to handle tenant redirect logic
+    const handleTenantRedirect = async (redirectPath?: string | null) => {
+      // Check if tenant has a profile
+      const { data: tenant } = await supabase
+        .from('tenants')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (tenant) {
+        // Check if tenant has applications
+        const { count } = await supabase
+          .from('tenant_applications')
+          .select('id', { count: 'exact' })
+          .eq('tenant_id', tenant.id)
+          .limit(1);
+          
+        if (count && count > 0) {
+          console.log("Tenant found with application, redirecting to dashboard");
+          navigate(redirectPath || '/tenant/dashboard');
+        } else {
+          console.log("Tenant found without application, redirecting to application");
+          navigate('/tenant/application');
+        }
+      } else {
+        console.log("Tenant role but no tenant found, redirecting to signup");
+        navigate('/tenant-signup');
+      }
+    };
+    
+    // Helper function to handle landlord redirect logic
+    const handleLandlordRedirect = async (redirectPath?: string | null) => {
+      // Check if landlord has a profile
+      const { data: landlord } = await supabase
+        .from('landlords')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+        
+      if (landlord) {
+        console.log("Landlord profile found, redirecting to dashboard");
+        navigate(redirectPath || '/landlord/dashboard');
+      } else {
+        // No landlord profile, create one
+        console.log("Landlord role but no profile, redirecting to property wizard");
+        navigate('/landlord/property/new');
       }
     };
 
@@ -204,8 +231,9 @@ export default function AuthPage() {
           title: "Welcome back!",
           description: "You have successfully logged in",
         });
-        // AuthProvider effect will handle redirects based on role
-        // We'll set authCompleted to trigger role check if needed
+        // We'll set authCompleted to true here to begin role checking
+        // If the user has a role, the useEffect will handle the redirect
+        // If the user has no role, they will be shown the role selection component
         setAuthCompleted(true);
       }
     } catch (error: any) {
@@ -253,6 +281,7 @@ export default function AuthPage() {
         <div className="mx-auto max-w-md">
           <BreadcrumbNav items={breadcrumbItems} />
           
+          {/* Show auth form if not authenticated yet */}
           {!authCompleted && !user ? (
             <Card className="border-primary/20 bg-background/50 shadow-lg">
               <CardHeader className="text-center">
@@ -269,6 +298,7 @@ export default function AuthPage() {
                 <TabsContent value="login">
                   <CardContent>
                     <form onSubmit={handleLogin} className="space-y-5">
+                      {/* Login form content */}
                       <div className="space-y-1">
                         <div className="relative">
                           <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground">
@@ -324,7 +354,9 @@ export default function AuthPage() {
                 <TabsContent value="signup">
                   <CardContent>
                     <form onSubmit={handleSignUp} className="space-y-5">
+                      {/* Signup form content */}
                       <div className="grid grid-cols-2 gap-4">
+                        {/* First name and last name inputs */}
                         <div className="space-y-1">
                           <div className="relative">
                             <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground">
@@ -444,6 +476,7 @@ export default function AuthPage() {
               </Tabs>
             </Card>
           ) : (
+            /* Show role selection after authentication */
             <Card className="border-primary/20 bg-background/50 shadow-lg">
               <CardContent className="pt-6">
                 <RoleSelection 

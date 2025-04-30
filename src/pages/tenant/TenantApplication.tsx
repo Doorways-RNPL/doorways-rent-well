@@ -111,9 +111,8 @@ const TenantApplication = () => {
       return;
     }
     
-    // IMPORTANT CHANGE: Remove automatic role assignment
-    // Previously: if (role !== "tenant") { setRole("tenant"); }
-    // Now: check if the role is tenant before proceeding
+    // CRITICAL FIX: No longer setting user's role automatically
+    // Instead, we check if user has the correct role to access this page
     if (role !== "tenant") {
       toast({
         title: "Role selection required",
@@ -148,18 +147,19 @@ const TenantApplication = () => {
         
         if (tenant) {
           // User has a tenant record, check for applications
-          const { data: applications, error: appError } = await supabase
+          const { data: applications, error: appError, count } = await supabase
             .from('tenant_applications')
-            .select('*')
+            .select('*', { count: 'exact' })
             .eq('tenant_id', tenant.id)
-            .maybeSingle();
+            .order('created_at', { ascending: false })
+            .limit(1);
             
           if (appError && appError.code !== 'PGRST116') {
             console.error("Error checking for applications:", appError);
             return;
           }
           
-          if (applications) {
+          if (count && count > 0) {
             setExistingApplication(true);
             toast({
               title: "Application already submitted",

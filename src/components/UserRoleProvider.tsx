@@ -98,7 +98,6 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
             if (tenant) {
               console.log("Tenant profile found, setting role as tenant");
               await setRole("tenant");
-              setRoleState("tenant");
             } else {
               const { data: landlord } = await supabase
                 .from('landlords')
@@ -109,7 +108,6 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
               if (landlord) {
                 console.log("Landlord profile found, setting role as landlord");
                 await setRole("landlord");
-                setRoleState("landlord");
               } else {
                 console.log("No profiles found, role remains null");
               }
