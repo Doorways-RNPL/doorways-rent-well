@@ -86,32 +86,9 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
             
             setRoleState(storedRole);
           } else {
-            // If no role found, check if user has tenant or landlord record
-            console.log("No role found in localStorage, checking profiles");
-            
-            const { data: tenant } = await supabase
-              .from('tenants')
-              .select('id')
-              .eq('user_id', user.id)
-              .maybeSingle();
-              
-            if (tenant) {
-              console.log("Tenant profile found, setting role as tenant");
-              await setRole("tenant");
-            } else {
-              const { data: landlord } = await supabase
-                .from('landlords')
-                .select('id')
-                .eq('user_id', user.id)
-                .maybeSingle();
-                
-              if (landlord) {
-                console.log("Landlord profile found, setting role as landlord");
-                await setRole("landlord");
-              } else {
-                console.log("No profiles found, role remains null");
-              }
-            }
+            console.log("No role found in localStorage or database, leaving as null");
+            // IMPORTANT: No longer automatically assigning roles based on profiles
+            setRoleState(null);
           }
         }
       } catch (error) {

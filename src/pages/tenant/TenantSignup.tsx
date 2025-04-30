@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,13 @@ const TenantSignup = () => {
         // If user is already authenticated
         if (user) {
           console.log("TenantSignup: User is already authenticated:", user.id);
+          
+          // Verify user has tenant role before checking profile
+          if (role !== 'tenant') {
+            console.log("User doesn't have tenant role, redirecting to role selection");
+            navigate("/auth", { state: { showRoleSelection: true } });
+            return;
+          }
           
           // Check if user already has tenant profile
           const { data: tenantData } = await supabase
@@ -83,7 +91,7 @@ const TenantSignup = () => {
     };
     
     checkUserStatus();
-  }, [user, navigate]);
+  }, [user, navigate, role]);
 
   // Check if user is coming from role selection
   useEffect(() => {
@@ -128,7 +136,7 @@ const TenantSignup = () => {
         localStorage.setItem("tenant-firstName", formData.firstName || user.user_metadata?.first_name || "");
         localStorage.setItem("tenant-lastName", formData.lastName || user.user_metadata?.last_name || "");
         
-        // Note: We no longer set the role here - it should be set in RoleSelection component
+        // Note: We no longer set the role here - it should already be set from role selection
         
         toast({
           title: "Information saved!",

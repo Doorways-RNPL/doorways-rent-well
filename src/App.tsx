@@ -61,9 +61,17 @@ const AuthGuard = ({ allowedRoles }: { allowedRoles: string[] }) => {
         setIsChecking(false);
         return;
       }
+
+      // If user has no role, direct to role selection regardless of the current path
+      if (!role) {
+        console.log("User has no role, redirecting to role selection");
+        navigate('/auth', { state: { showRoleSelection: true } });
+        setIsChecking(false);
+        return;
+      }
       
       // Allow access if role is in allowedRoles
-      if (role && allowedRoles.includes(role)) {
+      if (allowedRoles.includes(role)) {
         console.log("User has allowed role, checking profile status");
         
         // For tenant role, check if there's a profile and handle accordingly
@@ -105,16 +113,8 @@ const AuthGuard = ({ allowedRoles }: { allowedRoles: string[] }) => {
         return;
       }
       
-      // If no role yet, redirect to role selection
-      if (!role) {
-        console.log("User has no role, redirecting to auth for role selection");
-        navigate('/auth', { state: { showRoleSelection: true } });
-        setIsChecking(false);
-        return;
-      }
-      
       // Redirect based on role if not allowed
-      console.log("User has role but not allowed, redirecting to appropriate dashboard");
+      console.log("User has role but not allowed for this route, redirecting to appropriate dashboard");
       // Redirect based on role
       switch (role) {
         case 'tenant':
