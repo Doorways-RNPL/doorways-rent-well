@@ -161,13 +161,6 @@ export default function AuthPage() {
     localStorage.setItem("tenant-email", email);
     localStorage.setItem("tenant-firstName", firstName);
     localStorage.setItem("tenant-lastName", lastName);
-    
-    // Check for intended role
-    const storedIntendedRole = localStorage.getItem("intended-role");
-    if (storedIntendedRole) {
-      localStorage.setItem("user-role", storedIntendedRole);
-      localStorage.removeItem("intended-role");
-    }
 
     toast({
       title: "Account Created Successfully",
@@ -443,6 +436,7 @@ export default function AuthPage() {
               <CardContent className="pt-6">
                 <RoleSelection 
                   email={email} 
+                  intendedRole={intendedRole}
                   onComplete={() => {
                     // Reset state if needed
                     setEmail("");

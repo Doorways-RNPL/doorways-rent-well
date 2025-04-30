@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Link, useLocation } from 'react-router-dom';
@@ -268,14 +267,17 @@ const Navbar = () => {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
                     <DropdownMenuItem asChild>
-                      <Link to="/apply-as-tenant" className="cursor-pointer">Apply as Tenant</Link>
+                      <Link to="/tenant-signup" className="cursor-pointer">Apply as Tenant</Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link to="/auth" state={{ showSignup: true, intendedRole: 'landlord' }} className="cursor-pointer">List Your Property</Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <Link to="/auth" state={{ showSignup: true }} className="cursor-pointer">General Sign Up</Link>
+                      <Link to="/auth" state={{ showSignup: true }} className="cursor-pointer">Sign Up (Choose Role)</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/auth" state={{ showSignup: true, intendedRole: 'admin' }} className="cursor-pointer">Admin Access</Link>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -358,14 +360,17 @@ const Navbar = () => {
                     <Link to="/auth" onClick={closeMenu}>Log in</Link>
                   </Button>
                   <Button asChild className="w-full justify-center bg-primary text-background hover:bg-primary/90">
-                    <Link to="/auth" onClick={closeMenu}>Sign up</Link>
+                    <Link to="/auth" state={{ showSignup: true }} onClick={closeMenu}>Sign up</Link>
                   </Button>
                   <div className="flex flex-col pt-2 space-y-2 border-t border-white/10">
                     <Button asChild variant="ghost" className="w-full justify-center">
-                      <Link to="/apply-as-tenant" onClick={closeMenu}>Apply as Tenant</Link>
+                      <Link to="/tenant-signup" onClick={closeMenu}>Apply as Tenant</Link>
                     </Button>
                     <Button asChild variant="ghost" className="w-full justify-center">
                       <Link to="/auth" state={{ showSignup: true, intendedRole: 'landlord' }} onClick={closeMenu}>List Your Property</Link>
+                    </Button>
+                    <Button asChild variant="ghost" className="w-full justify-center">
+                      <Link to="/auth" state={{ showSignup: true, intendedRole: 'admin' }} onClick={closeMenu}>Admin Access</Link>
                     </Button>
                   </div>
                 </>

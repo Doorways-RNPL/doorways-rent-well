@@ -74,9 +74,6 @@ const TenantSignup = () => {
               lastName: user.user_metadata?.last_name || ""
             }));
           }
-          
-          // REMOVED: automatic role setting as "tenant"
-          // Let the role be determined by the user's choice in role selection
         }
       } catch (error) {
         console.error("Error checking user status:", error);
@@ -90,20 +87,20 @@ const TenantSignup = () => {
 
   // Check if user is coming from role selection
   useEffect(() => {
-    const userRole = localStorage.getItem("user-role");
     const userEmail = localStorage.getItem("tenant-email");
     
     if (userEmail) {
       setFormData(prev => ({ ...prev, email: userEmail }));
     }
     
-    if (userRole !== "tenant" && !userEmail && !user) {
+    if (!userEmail && !user) {
       toast({
         title: "Information",
         description: "Please select your role before proceeding.",
       });
+      navigate("/auth");
     }
-  }, [toast, user]);
+  }, [toast, user, navigate]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -130,7 +127,8 @@ const TenantSignup = () => {
         localStorage.setItem("tenant-phone", formData.phone);
         localStorage.setItem("tenant-firstName", formData.firstName || user.user_metadata?.first_name || "");
         localStorage.setItem("tenant-lastName", formData.lastName || user.user_metadata?.last_name || "");
-        localStorage.setItem("user-role", "tenant"); // Set role here after form submission
+        
+        // Note: We no longer set the role here - it should be set in RoleSelection component
         
         toast({
           title: "Information saved!",
@@ -182,15 +180,16 @@ const TenantSignup = () => {
       localStorage.setItem("tenant-phone", formData.phone);
       localStorage.setItem("tenant-firstName", formData.firstName);
       localStorage.setItem("tenant-lastName", formData.lastName);
-      localStorage.setItem("user-role", "tenant"); // Only set tenant role when specifically applying as tenant
+      
+      // No longer setting tenant role automatically
       
       toast({
         title: "Account created!",
-        description: "You can now complete your application.",
+        description: "Please select your role to continue.",
       });
       
-      // Redirect to the application form
-      navigate("/tenant/application");
+      // Redirect to the auth page for role selection
+      navigate("/auth", { state: { showRoleSelection: true } });
     } catch (error: any) {
       console.error("Signup error:", error);
       toast({
@@ -246,7 +245,7 @@ const TenantSignup = () => {
             <Card className="border-primary/20 bg-background/50 shadow-lg">
               <CardHeader className="text-center">
                 <CardTitle className="text-3xl font-bold text-primary">
-                  {user ? "Complete Your Tenant Profile" : "Apply as a Tenant"}
+                  {user ? "Continue as a Tenant" : "Apply as a Tenant"}
                 </CardTitle>
                 <CardDescription className="text-foreground/70">
                   {user 

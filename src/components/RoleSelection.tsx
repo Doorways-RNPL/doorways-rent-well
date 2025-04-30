@@ -12,9 +12,10 @@ import { useAuth } from "./AuthProvider";
 interface RoleSelectionProps {
   email?: string;
   onComplete?: () => void;
+  intendedRole?: string;
 }
 
-const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
+const RoleSelection = ({ email, onComplete, intendedRole }: RoleSelectionProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { setRole, role } = useUserRole();
@@ -22,6 +23,13 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
   const [selectedRole, setSelectedRole] = useState<"tenant" | "landlord" | "admin" | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingExisting, setIsCheckingExisting] = useState(true);
+  
+  // Pre-select role if passed through props
+  useEffect(() => {
+    if (intendedRole && ["tenant", "landlord", "admin"].includes(intendedRole)) {
+      setSelectedRole(intendedRole as "tenant" | "landlord" | "admin");
+    }
+  }, [intendedRole]);
   
   // Check if user already has a tenant/landlord profile
   useEffect(() => {
@@ -168,8 +176,18 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
         // Admin flow - direct users to admin dashboard without creating any profile
         navigate('/admin/dashboard');
       } else if (selectedRole === "tenant") {
-        // Tenant flow - direct users to the tenant application page
-        navigate('/tenant/application');
+        // Check if we have tenant info in localStorage
+        const hasBasicInfo = localStorage.getItem("tenant-firstName") && 
+                            localStorage.getItem("tenant-lastName") && 
+                            localStorage.getItem("tenant-email");
+                            
+        if (hasBasicInfo) {
+          // If we have basic info, go directly to application
+          navigate('/tenant/application');
+        } else {
+          // No basic info yet, go to signup page first
+          navigate('/tenant-signup');
+        }
       }
       
       // Clear the redirect path from session storage
