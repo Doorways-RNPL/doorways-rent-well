@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -29,7 +28,7 @@ const TenantApplication = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
-  const { role, setRole } = useUserRole();
+  const { role } = useUserRole();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasAttemptedNext, setHasAttemptedNext] = useState(false);
@@ -112,9 +111,17 @@ const TenantApplication = () => {
       return;
     }
     
-    // Set role if we're coming from the signup flow
+    // IMPORTANT CHANGE: Remove automatic role assignment
+    // Previously: if (role !== "tenant") { setRole("tenant"); }
+    // Now: check if the role is tenant before proceeding
     if (role !== "tenant") {
-      setRole("tenant");
+      toast({
+        title: "Role selection required",
+        description: "You need to select 'Tenant' role to access the application form.",
+        variant: "destructive",
+      });
+      navigate("/auth", { state: { showRoleSelection: true } });
+      return;
     }
 
     if (email) {
@@ -171,7 +178,7 @@ const TenantApplication = () => {
     };
     
     checkForExistingApplication();
-  }, [navigate, toast, user, role, setRole]);
+  }, [navigate, toast, user, role]);
 
   const updateApplicationData = (newData: Partial<typeof applicationData>) => {
     setApplicationData(prev => ({ ...prev, ...newData }));

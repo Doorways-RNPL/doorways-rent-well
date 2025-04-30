@@ -54,7 +54,7 @@ const RoleSelection = ({ email, onComplete, intendedRole }: RoleSelectionProps) 
           .maybeSingle();
           
         if (tenantData) {
-          console.log("Existing tenant profile found, redirecting to dashboard");
+          console.log("Existing tenant profile found");
           await setRole("tenant");
           
           // Check if tenant has a recent application before redirecting
@@ -65,9 +65,11 @@ const RoleSelection = ({ email, onComplete, intendedRole }: RoleSelectionProps) 
             .limit(1);
             
           if (count && count > 0) {
+            console.log("Tenant has application, redirecting to dashboard");
             navigate(redirectPath || '/tenant/dashboard');
           } else {
             // No applications yet, redirect to application page
+            console.log("No application found, redirecting to application");
             navigate('/tenant/application');
           }
           return;
@@ -88,15 +90,20 @@ const RoleSelection = ({ email, onComplete, intendedRole }: RoleSelectionProps) 
         }
         
         // If user role is set but no profile exists
-        if (role === "tenant") {
-          navigate('/tenant/application');
-          return;
-        } else if (role === "landlord") {
-          navigate('/landlord/property/new');
-          return;
-        } else if (role === "admin") {
-          navigate('/admin/dashboard');
-          return;
+        if (role) {
+          console.log("Role is already set to:", role);
+          
+          switch(role) {
+            case "tenant":
+              navigate('/tenant/application');
+              return;
+            case "landlord":
+              navigate('/landlord/property/new');
+              return;
+            case "admin":
+              navigate('/admin/dashboard');
+              return;
+          }
         }
         
         setIsCheckingExisting(false);
@@ -176,6 +183,32 @@ const RoleSelection = ({ email, onComplete, intendedRole }: RoleSelectionProps) 
         // Admin flow - direct users to admin dashboard without creating any profile
         navigate('/admin/dashboard');
       } else if (selectedRole === "tenant") {
+        // Check if tenant profile already exists
+        const { data: existingTenant, error: checkError } = await supabase
+          .from('tenants')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+          
+        if (existingTenant) {
+          // Check if tenant has applications already
+          const { count } = await supabase
+            .from('tenant_applications')
+            .select('id', { count: 'exact' })
+            .eq('tenant_id', existingTenant.id)
+            .limit(1);
+            
+          if (count && count > 0) {
+            // Has application, go to dashboard
+            navigate('/tenant/dashboard');
+            return;
+          } else {
+            // No applications yet
+            navigate('/tenant/application');
+            return;
+          }
+        }
+
         // Check if we have tenant info in localStorage
         const hasBasicInfo = localStorage.getItem("tenant-firstName") && 
                             localStorage.getItem("tenant-lastName") && 

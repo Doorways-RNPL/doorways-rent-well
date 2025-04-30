@@ -65,7 +65,7 @@ const Navbar = () => {
       setIsMenuOpen(false);
     }
   };
-
+  
   // Get the right dashboard link and menu items based on user role
   const getDashboardInfo = () => {
     if (isLoading || isLoadingRole || !user) {
@@ -172,18 +172,8 @@ const Navbar = () => {
     }
     
     return {
-      link: (
-        <Link 
-          to="/admin/dashboard" 
-          onClick={closeMenu}
-          className="text-white/70 hover:text-primary transition-colors"
-        >
-          Admin Access
-        </Link>
-      ),
-      menuItems: [
-        { label: "Admin Access", href: "/admin/dashboard" }
-      ]
+      link: null,
+      menuItems: []
     };
   };
   
@@ -267,7 +257,7 @@ const Navbar = () => {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
                     <DropdownMenuItem asChild>
-                      <Link to="/tenant-signup" className="cursor-pointer">Apply as Tenant</Link>
+                      <Link to="/auth" state={{ showSignup: true, intendedRole: 'tenant' }} className="cursor-pointer">Apply as Tenant</Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link to="/auth" state={{ showSignup: true, intendedRole: 'landlord' }} className="cursor-pointer">List Your Property</Link>
@@ -364,7 +354,7 @@ const Navbar = () => {
                   </Button>
                   <div className="flex flex-col pt-2 space-y-2 border-t border-white/10">
                     <Button asChild variant="ghost" className="w-full justify-center">
-                      <Link to="/tenant-signup" onClick={closeMenu}>Apply as Tenant</Link>
+                      <Link to="/auth" state={{ showSignup: true, intendedRole: 'tenant' }} onClick={closeMenu}>Apply as Tenant</Link>
                     </Button>
                     <Button asChild variant="ghost" className="w-full justify-center">
                       <Link to="/auth" state={{ showSignup: true, intendedRole: 'landlord' }} onClick={closeMenu}>List Your Property</Link>

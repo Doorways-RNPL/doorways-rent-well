@@ -50,7 +50,7 @@ export default function AuthPage() {
 
     const checkUserAndRedirect = async () => {
       try {
-        console.log("AuthPage: Checking user status:", { user, role });
+        console.log("AuthPage: Checking user status:", { user, role, showRoleSelection });
         
         // If showRoleSelection is true, skip redirect
         if (showRoleSelection) {
@@ -74,8 +74,20 @@ export default function AuthPage() {
                 .maybeSingle();
 
               if (tenant) {
-                console.log("Tenant found, redirecting to dashboard");
-                navigate(redirectPath || '/tenant/dashboard');
+                // Check if tenant has applications
+                const { count } = await supabase
+                  .from('tenant_applications')
+                  .select('id', { count: 'exact' })
+                  .eq('tenant_id', tenant.id)
+                  .limit(1);
+                  
+                if (count && count > 0) {
+                  console.log("Tenant found with application, redirecting to dashboard");
+                  navigate(redirectPath || '/tenant/dashboard');
+                } else {
+                  console.log("Tenant found without application, redirecting to application");
+                  navigate('/tenant/application');
+                }
               } else {
                 console.log("Tenant role but no tenant found, redirecting to application");
                 navigate('/tenant/application');

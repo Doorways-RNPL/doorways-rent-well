@@ -36,7 +36,7 @@ const queryClient = new QueryClient({
   },
 });
 
-// AuthGuard component for protecting routes
+// Enhanced AuthGuard component for protecting routes
 const AuthGuard = ({ allowedRoles }: { allowedRoles: string[] }) => {
   const { user, isLoading } = useAuth();
   const { role, isLoadingRole } = useUserRole();
@@ -89,7 +89,7 @@ const AuthGuard = ({ allowedRoles }: { allowedRoles: string[] }) => {
         navigate('/admin/dashboard');
         break;
       default:
-        navigate('/auth');
+        navigate('/auth', { state: { showRoleSelection: true } });
     }
     
     setIsChecking(false);
@@ -121,8 +121,10 @@ const App = () => (
               <Route path="/tenants" element={<TenantsPage />} />
               <Route path="/auth" element={<AuthPage />} />
               
-              {/* Tenant registration - removed role auto-assignment */}
-              <Route path="/tenant-signup" element={<TenantSignup />} />
+              {/* Tenant registration - placed AFTER auth to emphasize going through auth flow first */}
+              <Route element={<AuthGuard allowedRoles={['tenant']} />}>
+                <Route path="/tenant-signup" element={<TenantSignup />} />
+              </Route>
               
               {/* Tenant routes */}
               <Route element={<AuthGuard allowedRoles={['tenant']} />}>
@@ -147,8 +149,8 @@ const App = () => (
               </Route>
               
               {/* Legacy route redirects */}
-              <Route path="/apply-as-tenant" element={<Navigate to="/tenant-signup" replace />} />
-              <Route path="/apply" element={<Navigate to="/tenant-signup" replace />} />
+              <Route path="/apply-as-tenant" element={<Navigate to="/auth" state={{ showSignup: true, intendedRole: 'tenant' }} replace />} />
+              <Route path="/apply" element={<Navigate to="/auth" state={{ showSignup: true, intendedRole: 'tenant' }} replace />} />
               
               {/* Fallback route */}
               <Route path="*" element={<NotFound />} />
