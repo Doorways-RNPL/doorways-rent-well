@@ -1,4 +1,3 @@
-
 export const stepTitles = [
   "Personal Info", 
   "Address History", 
@@ -17,18 +16,18 @@ export const validateStep = (step: number, data: any) => {
     case 3:
       return !!(data.employerName && data.jobTitle && data.monthlyIncome);
     case 4:
-      const isCurrentResidence = data.residenceType === 'current';
-      const leaseDuration = parseInt(data.leaseDuration);
-      
-      if (isCurrentResidence && leaseDuration < 2) return false;
-      if (!isCurrentResidence && leaseDuration < 12) return false;
-      
-      if (!data.monthlyRent || !data.leaseStartDate || !data.landlordName || 
-          !data.landlordEmail || !data.landlordPhone) return false;
-          
-      if (data.residenceType === 'new' && (!data.propertyAddress || !data.propertyCity)) {
+      // Updated validation for Step 4
+      // Only check for fields that are actually collected in the TenantStep4 component
+      if (!data.propertyId || !data.leaseStartDate || !data.leaseDuration) {
         return false;
       }
+      
+      // Monthly rent is auto-populated when property is selected, so we can keep this check
+      if (!data.monthlyRent) {
+        return false;
+      }
+      
+      // No longer checking for landlord information that isn't collected in the form
       return true;
     case 5:
       return true; // Documents are optional in demo

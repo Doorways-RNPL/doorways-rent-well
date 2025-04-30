@@ -58,7 +58,7 @@ const TenantStep4 = ({ data, updateData, properties, isLoading }: TenantStep4Pro
           </div>
         ) : (
           <div className="space-y-2">
-            <Label htmlFor="propertySelect">Select Property</Label>
+            <Label htmlFor="propertySelect">Select Property <span className="text-red-500">*</span></Label>
             <Select 
               value={data.propertyId} 
               onValueChange={handlePropertySelect}
@@ -82,7 +82,7 @@ const TenantStep4 = ({ data, updateData, properties, isLoading }: TenantStep4Pro
         )}
 
         <div className="space-y-2">
-          <Label htmlFor="leaseStartDate">Lease Start Date</Label>
+          <Label htmlFor="leaseStartDate">Lease Start Date <span className="text-red-500">*</span></Label>
           <Input
             id="leaseStartDate"
             type="date"
@@ -93,7 +93,7 @@ const TenantStep4 = ({ data, updateData, properties, isLoading }: TenantStep4Pro
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="leaseDuration">Lease Duration (months)</Label>
+          <Label htmlFor="leaseDuration">Lease Duration (months) <span className="text-red-500">*</span></Label>
           <Select 
             value={data.leaseDuration} 
             onValueChange={(value) => updateData({ leaseDuration: value })}
