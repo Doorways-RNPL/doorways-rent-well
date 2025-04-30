@@ -46,8 +46,8 @@ const TenantStep4 = ({ data, updateData, properties, isLoading }: TenantStep4Pro
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-white mb-4">Lease Details</h2>
-        <p className="text-white/70 mb-6">Please provide information about the property you are applying for.</p>
+        <h2 className="text-xl font-semibold text-white mb-4">Property Selection</h2>
+        <p className="text-white/70 mb-6">Please select the property you want to apply for.</p>
       </div>
 
       <div className="space-y-6">
@@ -109,37 +109,6 @@ const TenantStep4 = ({ data, updateData, properties, isLoading }: TenantStep4Pro
               <SelectItem value="36">36 months</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="landlordName">Landlord Name (if applying for current residence)</Label>
-          <Input
-            id="landlordName"
-            value={data.landlordName}
-            onChange={(e) => updateData({ landlordName: e.target.value })}
-            placeholder="Enter landlord name"
-          />
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="landlordEmail">Landlord Email</Label>
-          <Input
-            id="landlordEmail"
-            type="email"
-            value={data.landlordEmail}
-            onChange={(e) => updateData({ landlordEmail: e.target.value })}
-            placeholder="Enter landlord email"
-          />
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="landlordPhone">Landlord Phone</Label>
-          <Input
-            id="landlordPhone"
-            value={data.landlordPhone}
-            onChange={(e) => updateData({ landlordPhone: e.target.value })}
-            placeholder="Enter landlord phone number"
-          />
         </div>
       </div>
     </div>

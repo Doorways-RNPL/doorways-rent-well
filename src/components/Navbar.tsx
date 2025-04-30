@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Link, useLocation } from 'react-router-dom';
@@ -78,20 +79,42 @@ const Navbar = () => {
     if (role === 'tenant') {
       return {
         link: (
-          <Link 
-            to="/tenant/dashboard" 
-            onClick={closeMenu}
-            className={cn(
-              "text-white/70 hover:text-primary transition-colors",
-              location.pathname === '/tenant/dashboard' && "text-primary font-medium"
-            )}
-          >
-            Dashboard
-          </Link>
+          <NavigationMenu>
+            <NavigationMenuList>
+              <NavigationMenuItem>
+                <NavigationMenuTrigger 
+                  className={cn(
+                    "bg-transparent text-white/70 hover:text-primary hover:bg-transparent p-0",
+                    location.pathname.includes('/tenant/') && "text-primary font-medium"
+                  )}
+                >
+                  Dashboard
+                </NavigationMenuTrigger>
+                <NavigationMenuContent>
+                  <ul className="grid w-[200px] gap-1 p-2 md:w-[300px]">
+                    <li className="row-span-1">
+                      <NavigationMenuLink asChild>
+                        <Link to="/tenant/dashboard" onClick={closeMenu} className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
+                          <div className="text-sm font-medium leading-none">Dashboard</div>
+                        </Link>
+                      </NavigationMenuLink>
+                    </li>
+                    <li className="row-span-1">
+                      <NavigationMenuLink asChild>
+                        <Link to="/tenant/application" onClick={closeMenu} className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
+                          <div className="text-sm font-medium leading-none">New Application</div>
+                        </Link>
+                      </NavigationMenuLink>
+                    </li>
+                  </ul>
+                </NavigationMenuContent>
+              </NavigationMenuItem>
+            </NavigationMenuList>
+          </NavigationMenu>
         ),
         menuItems: [
           { label: "Dashboard", href: "/tenant/dashboard" },
-          { label: "My Application", href: "/tenant/application" }
+          { label: "New Application", href: "/tenant/application" }
         ]
       };
     } else if (role === 'landlord') {

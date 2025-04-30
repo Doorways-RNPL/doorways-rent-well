@@ -30,12 +30,12 @@ export async function handleTenantContinue(
     if (count && count > 0) {
       // Has application, go to dashboard
       console.log("Tenant has applications, redirecting to dashboard");
-      navigate('/tenant/dashboard');
+      navigate(redirectPath || '/tenant/dashboard');
       return;
     } else {
-      // No applications yet
+      // No applications yet, show application page
       console.log("No applications yet, redirecting to application page");
-      navigate('/tenant/application');
+      navigate(redirectPath || '/tenant/application');
       return;
     }
   }
@@ -48,10 +48,32 @@ export async function handleTenantContinue(
   console.log("Tenant basic info in localStorage:", hasBasicInfo);
                         
   if (hasBasicInfo) {
-    // If we have basic info, go directly to tenant-signup
-    // This ensures we create a tenant profile before application
-    console.log("Basic info found, redirecting to tenant signup");
-    navigate('/tenant-signup');
+    // If we have basic info, create tenant profile automatically
+    const firstName = localStorage.getItem("tenant-firstName") || "";
+    const lastName = localStorage.getItem("tenant-lastName") || "";
+    const email = localStorage.getItem("tenant-email") || user.email;
+    
+    try {
+      const { data: newTenant, error } = await supabase
+        .from('tenants')
+        .insert({
+          first_name: firstName,
+          last_name: lastName,
+          email: email,
+          user_id: user.id
+        })
+        .select('id')
+        .single();
+        
+      if (error) throw error;
+      
+      // Direct to application page
+      console.log("Tenant profile created, redirecting to application");
+      navigate(redirectPath || '/tenant/application');
+    } catch (error) {
+      console.error("Error creating tenant profile:", error);
+      navigate(redirectPath || '/tenant-signup');
+    }
   } else {
     // No basic info yet, go to signup page first
     console.log("No basic info yet, redirecting to tenant signup");
@@ -88,7 +110,7 @@ export async function handleExistingTenantRole(
     } else {
       // No applications yet, redirect to application page
       console.log("No application found, redirecting to application");
-      navigate('/tenant/application');
+      navigate(redirectPath || '/tenant/application');
     }
     return;
   } else {

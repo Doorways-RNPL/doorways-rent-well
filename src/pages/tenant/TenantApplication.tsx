@@ -42,7 +42,7 @@ const TenantApplication = () => {
     dateOfBirth: "",
     idNumber: "",
     
-    residenceType: "new" as 'current' | 'new',
+    residenceType: "new" as 'new',
     currentAddress: "",
     currentCity: "",
     moveInDate: "",
