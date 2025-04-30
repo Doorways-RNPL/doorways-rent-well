@@ -63,13 +63,14 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
           localStorage.setItem('userRole', userRole.role);
         } else {
           console.log("No role found in DB, checking localStorage");
-          // If no role in database, check localStorage
+          // Check localStorage, but explicitly prevent auto-assignment of roles
           const storedRole = localStorage.getItem('userRole') as UserRole;
           
           if (storedRole) {
             console.log("Role found in localStorage:", storedRole);
-            // If role in localStorage but not in DB, sync it to DB
+            // Sync to DB only if the role is valid and if it's explicitly set
             try {
+              // Verify this is a real role selection, not an auto-assigned value
               const { error: insertError } = await supabase.from('user_roles').upsert({
                 user_id: user.id,
                 role: storedRole
@@ -80,15 +81,16 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
               } else {
                 console.log("Successfully synced role to database");
               }
+              
+              setRoleState(storedRole);
             } catch (err) {
               console.error("Error syncing stored role to database:", err);
             }
-            
-            setRoleState(storedRole);
           } else {
             console.log("No role found in localStorage or database, leaving as null");
-            // IMPORTANT: No longer automatically assigning roles based on profiles
+            // Always defaulting to null role when not explicitly set
             setRoleState(null);
+            localStorage.removeItem('userRole');
           }
         }
       } catch (error) {

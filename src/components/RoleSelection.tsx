@@ -40,7 +40,7 @@ const RoleSelection = ({ email, onComplete, intendedRole }: RoleSelectionProps) 
       }
       
       try {
-        console.log("RoleSelection: Checking existing profiles for user:", user.id);
+        console.log("RoleSelection: Checking existing profiles for user:", user.id, "current role:", role);
         
         // Get redirect path if one was saved
         const redirectPath = sessionStorage.getItem('redirectAfterAuth');
@@ -155,11 +155,13 @@ const RoleSelection = ({ email, onComplete, intendedRole }: RoleSelectionProps) 
         throw new Error("No authenticated user found");
       }
 
+      console.log("Setting user role to:", selectedRole);
       // Set user role in the global context
       await setRole(selectedRole);
 
       // Get redirect path if one was saved
       const redirectPath = sessionStorage.getItem('redirectAfterAuth');
+      console.log("Redirect path after auth:", redirectPath);
       
       // Clear the redirect path from session storage
       sessionStorage.removeItem('redirectAfterAuth');
@@ -225,6 +227,8 @@ const RoleSelection = ({ email, onComplete, intendedRole }: RoleSelectionProps) 
   
   // Helper function to handle tenant flow
   const handleTenantContinue = async (redirectPath?: string | null) => {
+    console.log("Handling tenant continue flow, redirect path:", redirectPath);
+    
     // Check if tenant profile already exists
     const { data: existingTenant, error: checkError } = await supabase
       .from('tenants')
@@ -233,6 +237,8 @@ const RoleSelection = ({ email, onComplete, intendedRole }: RoleSelectionProps) 
       .maybeSingle();
       
     if (existingTenant) {
+      console.log("Existing tenant profile found:", existingTenant.id);
+      
       // Check if tenant has applications already
       const { count } = await supabase
         .from('tenant_applications')
@@ -242,10 +248,12 @@ const RoleSelection = ({ email, onComplete, intendedRole }: RoleSelectionProps) 
         
       if (count && count > 0) {
         // Has application, go to dashboard
+        console.log("Tenant has applications, redirecting to dashboard");
         navigate('/tenant/dashboard');
         return;
       } else {
         // No applications yet
+        console.log("No applications yet, redirecting to application page");
         navigate('/tenant/application');
         return;
       }
@@ -255,12 +263,17 @@ const RoleSelection = ({ email, onComplete, intendedRole }: RoleSelectionProps) 
     const hasBasicInfo = localStorage.getItem("tenant-firstName") && 
                          localStorage.getItem("tenant-lastName") && 
                          localStorage.getItem("tenant-email");
+    
+    console.log("Tenant basic info in localStorage:", hasBasicInfo);
                          
     if (hasBasicInfo) {
-      // If we have basic info, go directly to application
-      navigate('/tenant/application');
+      // If we have basic info, go directly to tenant-signup
+      // This ensures we create a tenant profile before application
+      console.log("Basic info found, redirecting to tenant signup");
+      navigate('/tenant-signup');
     } else {
       // No basic info yet, go to signup page first
+      console.log("No basic info yet, redirecting to tenant signup");
       navigate('/tenant-signup');
     }
   };

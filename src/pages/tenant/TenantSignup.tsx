@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -40,9 +39,17 @@ const TenantSignup = () => {
         if (user) {
           console.log("TenantSignup: User is already authenticated:", user.id);
           
+          // If user does not have a role yet, allow them to stay on this page
+          // but will need to select a role after signup
+          if (!role) {
+            console.log("User has no role yet, allowing tenant signup form");
+            setIsCheckingUser(false);
+            return;
+          }
+          
           // Verify user has tenant role before checking profile
           if (role !== 'tenant') {
-            console.log("User doesn't have tenant role, redirecting to role selection");
+            console.log("User has a non-tenant role, redirecting to role selection");
             navigate("/auth", { state: { showRoleSelection: true } });
             return;
           }
@@ -60,20 +67,8 @@ const TenantSignup = () => {
             return;
           }
           
-          // Check if user has submitted an application
-          const { data: applicationData } = await supabase
-            .from('tenant_applications')
-            .select('id')
-            .eq('tenant_email', user.email || "")
-            .maybeSingle();
-            
-          if (applicationData) {
-            console.log("User already has application, redirecting to dashboard");
-            navigate("/tenant/dashboard");
-            return;
-          }
-
-          // If no tenant profile yet, but user is authenticated, prefill form with user data
+          // If no tenant profile yet, but user is authenticated with tenant role, 
+          // prefill form with user data
           if (user.email) {
             setFormData(prev => ({
               ...prev,
@@ -93,22 +88,23 @@ const TenantSignup = () => {
     checkUserStatus();
   }, [user, navigate, role]);
 
-  // Check if user is coming from role selection
+  // Pre-fill form with data from localStorage if available
   useEffect(() => {
     const userEmail = localStorage.getItem("tenant-email");
+    const firstName = localStorage.getItem("tenant-firstName");
+    const lastName = localStorage.getItem("tenant-lastName");
+    const phone = localStorage.getItem("tenant-phone");
     
-    if (userEmail) {
-      setFormData(prev => ({ ...prev, email: userEmail }));
+    if (userEmail || firstName || lastName || phone) {
+      setFormData(prev => ({ 
+        ...prev, 
+        email: userEmail || prev.email, 
+        firstName: firstName || prev.firstName,
+        lastName: lastName || prev.lastName,
+        phone: phone || prev.phone
+      }));
     }
-    
-    if (!userEmail && !user) {
-      toast({
-        title: "Information",
-        description: "Please select your role before proceeding.",
-      });
-      navigate("/auth");
-    }
-  }, [toast, user, navigate]);
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -130,21 +126,22 @@ const TenantSignup = () => {
     try {
       // If user is already authenticated, just update their info and proceed
       if (user) {
+        console.log("User is already authenticated, storing info and redirecting to role selection");
+        
         // Store in local storage for persistence across pages
         localStorage.setItem("tenant-email", formData.email || user.email || "");
         localStorage.setItem("tenant-phone", formData.phone);
         localStorage.setItem("tenant-firstName", formData.firstName || user.user_metadata?.first_name || "");
         localStorage.setItem("tenant-lastName", formData.lastName || user.user_metadata?.last_name || "");
         
-        // Note: We no longer set the role here - it should already be set from role selection
-        
         toast({
           title: "Information saved!",
-          description: "You can now complete your application.",
+          description: "Please select your role to continue.",
         });
         
-        // Redirect to the application form
-        navigate("/tenant/application");
+        // Always redirect to role selection if the user is already authenticated
+        // This prevents automatic assignment to tenant role
+        navigate("/auth", { state: { showRoleSelection: true, intendedRole: 'tenant' } });
         return;
       }
     
@@ -189,15 +186,13 @@ const TenantSignup = () => {
       localStorage.setItem("tenant-firstName", formData.firstName);
       localStorage.setItem("tenant-lastName", formData.lastName);
       
-      // No longer setting tenant role automatically
-      
       toast({
         title: "Account created!",
         description: "Please select your role to continue.",
       });
       
       // Redirect to the auth page for role selection
-      navigate("/auth", { state: { showRoleSelection: true } });
+      navigate("/auth", { state: { showRoleSelection: true, intendedRole: 'tenant' } });
     } catch (error: any) {
       console.error("Signup error:", error);
       toast({
@@ -263,6 +258,7 @@ const TenantSignup = () => {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-5">
+                  
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <Label htmlFor="firstName">First Name</Label>
@@ -339,67 +335,71 @@ const TenantSignup = () => {
                     </div>
                   </div>
 
-                  <div className="space-y-1">
-                    <Label htmlFor="password">Password</Label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground">
-                        <Lock className="h-5 w-5" />
+                  {!user && (
+                    <>
+                      <div className="space-y-1">
+                        <Label htmlFor="password">Password</Label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground">
+                            <Lock className="h-5 w-5" />
+                          </div>
+                          <Input
+                            id="password"
+                            name="password"
+                            type={showPassword ? "text" : "password"}
+                            value={formData.password}
+                            onChange={handleInputChange}
+                            className="pl-10"
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={togglePasswordVisibility}
+                            className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
+                          >
+                            {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                          </button>
+                        </div>
+                        {formData.password && (
+                          <div className="h-1 w-full bg-gray-300 mt-1">
+                            <div 
+                              className={`h-full ${
+                                formData.password.length < 6 ? "bg-red-500 w-1/3" : 
+                                formData.password.length < 10 ? "bg-yellow-500 w-2/3" : 
+                                "bg-green-500 w-full"
+                              }`}
+                            ></div>
+                          </div>
+                        )}
+                        <p className="text-xs text-white/60 mt-1">Password must be at least 6 characters</p>
                       </div>
-                      <Input
-                        id="password"
-                        name="password"
-                        type={showPassword ? "text" : "password"}
-                        value={formData.password}
-                        onChange={handleInputChange}
-                        className="pl-10"
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={togglePasswordVisibility}
-                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
-                      >
-                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                      </button>
-                    </div>
-                    {formData.password && (
-                      <div className="h-1 w-full bg-gray-300 mt-1">
-                        <div 
-                          className={`h-full ${
-                            formData.password.length < 6 ? "bg-red-500 w-1/3" : 
-                            formData.password.length < 10 ? "bg-yellow-500 w-2/3" : 
-                            "bg-green-500 w-full"
-                          }`}
-                        ></div>
-                      </div>
-                    )}
-                    <p className="text-xs text-white/60 mt-1">Password must be at least 6 characters</p>
-                  </div>
 
-                  <div className="space-y-1">
-                    <Label htmlFor="confirmPassword">Confirm Password</Label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground">
-                        <Lock className="h-5 w-5" />
+                      <div className="space-y-1">
+                        <Label htmlFor="confirmPassword">Confirm Password</Label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground">
+                            <Lock className="h-5 w-5" />
+                          </div>
+                          <Input
+                            id="confirmPassword"
+                            name="confirmPassword"
+                            type={showConfirmPassword ? "text" : "password"}
+                            value={formData.confirmPassword}
+                            onChange={handleInputChange}
+                            className="pl-10"
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={toggleConfirmPasswordVisibility}
+                            className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
+                          >
+                            {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                          </button>
+                        </div>
                       </div>
-                      <Input
-                        id="confirmPassword"
-                        name="confirmPassword"
-                        type={showConfirmPassword ? "text" : "password"}
-                        value={formData.confirmPassword}
-                        onChange={handleInputChange}
-                        className="pl-10"
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={toggleConfirmPasswordVisibility}
-                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
-                      >
-                        {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                      </button>
-                    </div>
-                  </div>
+                    </>
+                  )}
                   
                   <Button 
                     type="submit" 

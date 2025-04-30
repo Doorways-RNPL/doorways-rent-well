@@ -42,6 +42,8 @@ export default function AuthPage() {
 
   // Check if user is already authenticated on load and redirect if needed
   useEffect(() => {
+    console.log("AuthPage: Initial check - user:", user?.id, "role:", role, "showRoleSelection:", showRoleSelection);
+    
     if (!user || isLoadingRole) {
       if (!isLoadingRole && !user) {
         setCheckingExistingData(false);
@@ -63,9 +65,11 @@ export default function AuthPage() {
         
         // Get redirect path if one was saved
         const redirectPath = sessionStorage.getItem('redirectAfterAuth');
+        console.log("Redirect path after auth:", redirectPath);
         
         // If user is already authenticated and has a role, check their status and redirect
         if (role) {
+          console.log("User has role:", role);
           switch (role) {
             case "tenant":
               await handleTenantRedirect(redirectPath);
@@ -143,7 +147,7 @@ export default function AuthPage() {
     };
 
     checkUserAndRedirect();
-  }, [user, role, isLoadingRole, navigate, showRoleSelection]);
+  }, [user, role, isLoadingRole, navigate, showRoleSelection, location.state]);
 
   // Handle signup from intended role
   useEffect(() => {

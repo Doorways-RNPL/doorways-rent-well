@@ -62,7 +62,8 @@ const AuthGuard = ({ allowedRoles }: { allowedRoles: string[] }) => {
         return;
       }
 
-      // If user has no role, direct to role selection regardless of the current path
+      // After authentication, if user has no role, direct to role selection
+      // This is a key change - ensures users must select a role before accessing role-specific routes
       if (!role) {
         console.log("User has no role, redirecting to role selection");
         navigate('/auth', { state: { showRoleSelection: true } });
@@ -145,6 +146,33 @@ const AuthGuard = ({ allowedRoles }: { allowedRoles: string[] }) => {
   return <Outlet />;
 };
 
+// Special AuthGuard for TenantSignup that only checks if user is authenticated
+// This is crucial - it allows authenticated users to access tenant signup without a role
+const TenantSignupGuard = () => {
+  const { user, isLoading } = useAuth();
+  const navigate = useNavigate();
+  const [isChecking, setIsChecking] = useState(true);
+  
+  useEffect(() => {
+    if (isLoading) return;
+    
+    if (!user) {
+      // Store the current path to redirect back after login
+      sessionStorage.setItem('redirectAfterAuth', '/tenant-signup');
+      console.log("User not authenticated, redirecting to auth page");
+      navigate('/auth');
+    }
+    
+    setIsChecking(false);
+  }, [user, isLoading, navigate]);
+  
+  if (isLoading || isChecking) {
+    return <div className="container mx-auto pt-24 text-center">Checking authentication...</div>;
+  }
+  
+  return <Outlet />;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -163,7 +191,7 @@ const App = () => (
               <Route path="/auth" element={<AuthPage />} />
               
               {/* Tenant registration - requires auth but not necessarily tenant role yet */}
-              <Route element={<AuthGuard allowedRoles={['tenant']} />}>
+              <Route element={<TenantSignupGuard />}>
                 <Route path="/tenant-signup" element={<TenantSignup />} />
               </Route>
               
