@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +16,7 @@ import { useUserRole } from "@/components/UserRoleProvider";
 
 export default function AuthPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
   const { role, isLoadingRole } = useUserRole();
@@ -30,6 +30,14 @@ export default function AuthPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [authCompleted, setAuthCompleted] = useState(false);
   const [checkingExistingData, setCheckingExistingData] = useState(true);
+  
+  // Get state from location if passed
+  const showSignupFromState = location.state?.showSignup;
+  const intendedRole = location.state?.intendedRole;
+  const showRoleSelection = location.state?.showRoleSelection;
+
+  // Set the default tab based on state
+  const [activeTab, setActiveTab] = useState(showSignupFromState ? "signup" : "login");
 
   // Check if user is already authenticated on load and redirect if needed
   useEffect(() => {
@@ -43,6 +51,13 @@ export default function AuthPage() {
     const checkUserAndRedirect = async () => {
       try {
         console.log("AuthPage: Checking user status:", { user, role });
+        
+        // If showRoleSelection is true, skip redirect
+        if (showRoleSelection) {
+          setAuthCompleted(true);
+          setCheckingExistingData(false);
+          return;
+        }
         
         // Get redirect path if one was saved
         const redirectPath = sessionStorage.getItem('redirectAfterAuth');
@@ -63,7 +78,7 @@ export default function AuthPage() {
                 navigate(redirectPath || '/tenant/dashboard');
               } else {
                 console.log("Tenant role but no tenant found, redirecting to application");
-                navigate('/apply');
+                navigate('/tenant/application');
               }
               break;
             case "landlord":
@@ -89,7 +104,14 @@ export default function AuthPage() {
     };
 
     checkUserAndRedirect();
-  }, [user, role, isLoadingRole, navigate]);
+  }, [user, role, isLoadingRole, navigate, showRoleSelection]);
+
+  // Handle signup from intended role
+  useEffect(() => {
+    if (intendedRole) {
+      localStorage.setItem("intended-role", intendedRole);
+    }
+  }, [intendedRole]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -135,10 +157,17 @@ export default function AuthPage() {
       return;
     }
 
-    // Store in localStorage for RoleSelection component
+    // Store in local storage for persistence across pages
     localStorage.setItem("tenant-email", email);
     localStorage.setItem("tenant-firstName", firstName);
     localStorage.setItem("tenant-lastName", lastName);
+    
+    // Check for intended role
+    const storedIntendedRole = localStorage.getItem("intended-role");
+    if (storedIntendedRole) {
+      localStorage.setItem("user-role", storedIntendedRole);
+      localStorage.removeItem("intended-role");
+    }
 
     toast({
       title: "Account Created Successfully",
@@ -219,7 +248,7 @@ export default function AuthPage() {
         <div className="mx-auto max-w-md">
           <BreadcrumbNav items={breadcrumbItems} />
           
-          {!authCompleted ? (
+          {!authCompleted && !user ? (
             <Card className="border-primary/20 bg-background/50 shadow-lg">
               <CardHeader className="text-center">
                 <CardTitle className="text-3xl font-bold text-primary">Welcome</CardTitle>
@@ -227,7 +256,7 @@ export default function AuthPage() {
                   Sign in to your account or create a new one
                 </CardDescription>
               </CardHeader>
-              <Tabs defaultValue="login" className="w-full">
+              <Tabs defaultValue={activeTab} value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-2 mb-8">
                   <TabsTrigger value="login">Login</TabsTrigger>
                   <TabsTrigger value="signup">Sign Up</TabsTrigger>
@@ -280,6 +309,10 @@ export default function AuthPage() {
                       >
                         {loading ? "Logging in..." : "Log In"}
                       </Button>
+                      
+                      <p className="text-sm text-center text-white/50 mt-4">
+                        Don't have an account yet? <button type="button" onClick={() => setActiveTab("signup")} className="text-primary hover:underline">Sign Up</button>
+                      </p>
                     </form>
                   </CardContent>
                 </TabsContent>
@@ -396,6 +429,10 @@ export default function AuthPage() {
                       >
                         {loading ? "Creating account..." : "Sign Up"}
                       </Button>
+                      
+                      <p className="text-sm text-center text-white/50 mt-4">
+                        Already have an account? <button type="button" onClick={() => setActiveTab("login")} className="text-primary hover:underline">Log In</button>
+                      </p>
                     </form>
                   </CardContent>
                 </TabsContent>

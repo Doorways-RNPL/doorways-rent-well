@@ -127,6 +127,9 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
 
       // Get redirect path if one was saved
       const redirectPath = sessionStorage.getItem('redirectAfterAuth');
+      
+      // Store the role in localStorage for persistence
+      localStorage.setItem("user-role", selectedRole);
 
       if (selectedRole === "landlord") {
         // First check if a landlord profile already exists
@@ -163,13 +166,9 @@ const RoleSelection = ({ email, onComplete }: RoleSelectionProps) => {
         navigate(redirectPath || "/landlord/property/new");
       } else if (selectedRole === "admin") {
         // Admin flow - direct users to admin dashboard without creating any profile
-        localStorage.setItem("user-role", "admin");
         navigate('/admin/dashboard');
-      } else {
-        // Tenant flow - direct users to application page
-        localStorage.setItem("user-role", "tenant");
-        
-        // If we have email info, skip directly to the application page
+      } else if (selectedRole === "tenant") {
+        // Tenant flow - direct users to the tenant application page
         navigate('/tenant/application');
       }
       

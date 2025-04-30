@@ -75,27 +75,29 @@ const AuthGuard = ({ allowedRoles }: { allowedRoles: string[] }) => {
       return;
     }
     
-    // Redirect based on role if not allowed
-    if (role) {
-      console.log("User has role but not allowed, redirecting to appropriate dashboard");
-      // Redirect based on role
-      switch (role) {
-        case 'tenant':
-          navigate('/tenant/dashboard');
-          break;
-        case 'landlord':
-          navigate('/landlord/dashboard');
-          break;
-        case 'admin':
-          navigate('/admin/dashboard');
-          break;
-        default:
-          navigate('/auth');
-      }
-    } else {
-      // No role yet, redirect to auth for role selection
+    // If no role yet, redirect to role selection
+    if (!role) {
       console.log("User has no role, redirecting to auth for role selection");
-      navigate('/auth');
+      navigate('/auth', { state: { showRoleSelection: true } });
+      setIsChecking(false);
+      return;
+    }
+    
+    // Redirect based on role if not allowed
+    console.log("User has role but not allowed, redirecting to appropriate dashboard");
+    // Redirect based on role
+    switch (role) {
+      case 'tenant':
+        navigate('/tenant/dashboard');
+        break;
+      case 'landlord':
+        navigate('/landlord/dashboard');
+        break;
+      case 'admin':
+        navigate('/admin/dashboard');
+        break;
+      default:
+        navigate('/auth');
     }
     
     setIsChecking(false);
@@ -126,7 +128,9 @@ const App = () => (
               <Route path="/landlords" element={<LandlordsPage />} />
               <Route path="/tenants" element={<TenantsPage />} />
               <Route path="/auth" element={<AuthPage />} />
-              <Route path="/apply" element={<TenantSignup />} />
+              
+              {/* Changed from "/apply" to "/apply-as-tenant" for clarity */}
+              <Route path="/apply-as-tenant" element={<TenantSignup />} />
               
               {/* Tenant routes */}
               <Route element={<AuthGuard allowedRoles={['tenant']} />}>
@@ -149,6 +153,9 @@ const App = () => (
               <Route element={<AuthGuard allowedRoles={['admin']} />}>
                 <Route path="/admin/dashboard" element={<AdminDashboard />} />
               </Route>
+              
+              {/* Legacy route redirect */}
+              <Route path="/apply" element={<Navigate to="/apply-as-tenant" replace />} />
               
               {/* Fallback route */}
               <Route path="*" element={<NotFound />} />

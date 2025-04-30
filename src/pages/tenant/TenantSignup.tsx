@@ -17,7 +17,7 @@ const TenantSignup = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
-  const { role, setRole } = useUserRole();
+  const { role } = useUserRole();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -31,7 +31,7 @@ const TenantSignup = () => {
   });
   const [isCheckingUser, setIsCheckingUser] = useState(true);
 
-  // Check if user is already authenticated and has a role
+  // Check if user is already authenticated on load
   useEffect(() => {
     const checkUserStatus = async () => {
       try {
@@ -48,9 +48,6 @@ const TenantSignup = () => {
             
           if (tenantData) {
             console.log("User already has tenant profile, redirecting to dashboard");
-            if (role !== "tenant") {
-              await setRole("tenant");
-            }
             navigate("/tenant/dashboard");
             return;
           }
@@ -64,9 +61,6 @@ const TenantSignup = () => {
             
           if (applicationData) {
             console.log("User already has application, redirecting to dashboard");
-            if (role !== "tenant") {
-              await setRole("tenant");
-            }
             navigate("/tenant/dashboard");
             return;
           }
@@ -81,10 +75,8 @@ const TenantSignup = () => {
             }));
           }
           
-          // Set role as tenant since they're on the tenant signup page
-          if (role !== "tenant") {
-            await setRole("tenant");
-          }
+          // REMOVED: automatic role setting as "tenant"
+          // Let the role be determined by the user's choice in role selection
         }
       } catch (error) {
         console.error("Error checking user status:", error);
@@ -94,7 +86,7 @@ const TenantSignup = () => {
     };
     
     checkUserStatus();
-  }, [user, navigate, role, setRole]);
+  }, [user, navigate]);
 
   // Check if user is coming from role selection
   useEffect(() => {
@@ -138,7 +130,7 @@ const TenantSignup = () => {
         localStorage.setItem("tenant-phone", formData.phone);
         localStorage.setItem("tenant-firstName", formData.firstName || user.user_metadata?.first_name || "");
         localStorage.setItem("tenant-lastName", formData.lastName || user.user_metadata?.last_name || "");
-        localStorage.setItem("user-role", "tenant");
+        localStorage.setItem("user-role", "tenant"); // Set role here after form submission
         
         toast({
           title: "Information saved!",
@@ -190,10 +182,7 @@ const TenantSignup = () => {
       localStorage.setItem("tenant-phone", formData.phone);
       localStorage.setItem("tenant-firstName", formData.firstName);
       localStorage.setItem("tenant-lastName", formData.lastName);
-      localStorage.setItem("user-role", "tenant");
-      
-      // Set the role
-      await setRole("tenant");
+      localStorage.setItem("user-role", "tenant"); // Only set tenant role when specifically applying as tenant
       
       toast({
         title: "Account created!",
@@ -257,7 +246,7 @@ const TenantSignup = () => {
             <Card className="border-primary/20 bg-background/50 shadow-lg">
               <CardHeader className="text-center">
                 <CardTitle className="text-3xl font-bold text-primary">
-                  {user ? "Complete Your Tenant Profile" : "Start Your Tenant Journey"}
+                  {user ? "Complete Your Tenant Profile" : "Apply as a Tenant"}
                 </CardTitle>
                 <CardDescription className="text-foreground/70">
                   {user 
@@ -416,9 +405,14 @@ const TenantSignup = () => {
                   </Button>
                   
                   {!user && (
-                    <p className="text-sm text-center text-white/50 mt-4">
-                      Already have an account? <a href="/auth" className="text-primary hover:underline">Log in</a>
-                    </p>
+                    <div className="space-y-2">
+                      <p className="text-sm text-center text-white/50">
+                        Already have an account? <a href="/auth" className="text-primary hover:underline">Log in</a>
+                      </p>
+                      <p className="text-sm text-center text-white/50">
+                        Looking to list your property? <a href="/auth" className="text-primary hover:underline">Sign up as a landlord</a>
+                      </p>
+                    </div>
                   )}
                 </form>
               </CardContent>

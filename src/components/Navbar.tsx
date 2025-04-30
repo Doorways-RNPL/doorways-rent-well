@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Link, useLocation } from 'react-router-dom';
@@ -14,11 +15,18 @@ import {
   NavigationMenu,
   NavigationMenuContent,
   NavigationMenuItem,
-  NavigationMenuLink,
   NavigationMenuList,
   NavigationMenuTrigger,
+  NavigationMenuLink
 } from "@/components/ui/navigation-menu"
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator
+} from "@/components/ui/dropdown-menu";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -253,9 +261,24 @@ const Navbar = () => {
                 <Button variant="outline" asChild className="border-white/20 text-white hover:bg-white/10">
                   <Link to="/auth">Log in</Link>
                 </Button>
-                <Button asChild className="bg-primary text-background hover:bg-primary/90">
-                  <Link to="/auth">Sign up</Link>
-                </Button>
+                
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button className="bg-primary text-background hover:bg-primary/90">Sign up</Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem asChild>
+                      <Link to="/apply-as-tenant" className="cursor-pointer">Apply as Tenant</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/auth" state={{ showSignup: true, intendedRole: 'landlord' }} className="cursor-pointer">List Your Property</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link to="/auth" state={{ showSignup: true }} className="cursor-pointer">General Sign Up</Link>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </>
             )}
           </div>
@@ -337,6 +360,14 @@ const Navbar = () => {
                   <Button asChild className="w-full justify-center bg-primary text-background hover:bg-primary/90">
                     <Link to="/auth" onClick={closeMenu}>Sign up</Link>
                   </Button>
+                  <div className="flex flex-col pt-2 space-y-2 border-t border-white/10">
+                    <Button asChild variant="ghost" className="w-full justify-center">
+                      <Link to="/apply-as-tenant" onClick={closeMenu}>Apply as Tenant</Link>
+                    </Button>
+                    <Button asChild variant="ghost" className="w-full justify-center">
+                      <Link to="/auth" state={{ showSignup: true, intendedRole: 'landlord' }} onClick={closeMenu}>List Your Property</Link>
+                    </Button>
+                  </div>
                 </>
               )}
             </div>
