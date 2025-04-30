@@ -1,18 +1,22 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { Session, User } from "@supabase/supabase-js";
+import { Session, User, SignInWithPasswordCredentials, SignUpWithPasswordCredentials } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
 type AuthContextType = {
   session: Session | null;
   user: User | null;
   isLoading: boolean;
+  signIn: (credentials: SignInWithPasswordCredentials) => Promise<any>;
+  signUp: (credentials: SignUpWithPasswordCredentials) => Promise<any>;
 };
 
 const AuthContext = createContext<AuthContextType>({
   session: null,
   user: null,
   isLoading: true,
+  signIn: async () => {},
+  signUp: async () => {},
 });
 
 export const useAuth = () => {
@@ -50,8 +54,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  const signIn = async (credentials: SignInWithPasswordCredentials) => {
+    return supabase.auth.signInWithPassword(credentials);
+  };
+
+  const signUp = async (credentials: SignUpWithPasswordCredentials) => {
+    return supabase.auth.signUp(credentials);
+  };
+
   return (
-    <AuthContext.Provider value={{ session, user, isLoading }}>
+    <AuthContext.Provider value={{ session, user, isLoading, signIn, signUp }}>
       {children}
     </AuthContext.Provider>
   );
