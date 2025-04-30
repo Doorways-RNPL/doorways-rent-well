@@ -7,7 +7,7 @@ import { handleLandlordContinue } from "./landlordHandler";
 import { checkExistingProfiles } from "./profileChecker";
 
 // Re-export all the functions and types for backward compatibility
-export { UserRole } from "./types";
+export type { UserRole } from "./types";
 export { handleTenantContinue, handleExistingTenantRole } from "./tenantHandler";
 export { handleLandlordContinue, handleExistingLandlordRole } from "./landlordHandler";
 export { checkExistingProfiles } from "./profileChecker";
