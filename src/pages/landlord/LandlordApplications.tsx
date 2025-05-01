@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/components/AuthProvider";
@@ -45,6 +44,7 @@ const LandlordApplications = () => {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [landlordId, setLandlordId] = useState<string | null>(null);
   const [hasProperties, setHasProperties] = useState(false);
+  const [landlordName, setLandlordName] = useState<string>("");
 
   useEffect(() => {
     const fetchApplications = async () => {
@@ -56,7 +56,7 @@ const LandlordApplications = () => {
         // Get the landlord's ID first
         const { data: landlordData, error: landlordError } = await supabase
           .from('landlords')
-          .select('id')
+          .select('id, first_name, last_name')
           .eq('user_id', user.id)
           .single();
 
@@ -66,6 +66,7 @@ const LandlordApplications = () => {
         }
         
         setLandlordId(landlordData.id);
+        setLandlordName(`${landlordData.first_name} ${landlordData.last_name}`);
         console.log("Landlord data:", landlordData);
 
         // Get property IDs for this landlord
@@ -127,13 +128,71 @@ const LandlordApplications = () => {
 
     if (user) {
       fetchApplications();
+      
+      // Setup realtime subscription for application updates
+      const channel = supabase
+        .channel('landlord-application-updates')
+        .on('postgres_changes', { 
+          event: '*', 
+          schema: 'public', 
+          table: 'tenant_applications' 
+        }, (payload) => {
+          console.log('Application change detected:', payload);
+          
+          if (payload.new && applications.some(app => app.id === payload.new.id)) {
+            // Update the local state with the new data
+            setApplications(prevApps => 
+              prevApps.map(app => 
+                app.id === payload.new.id ? { ...app, ...payload.new } : app
+              )
+            );
+            
+            // Show toast notification
+            toast({
+              title: "Application Updated",
+              description: `Application status is now ${payload.new.status}`,
+            });
+          }
+        })
+        .subscribe();
+        
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user, toast]);
+
+  const sendAdminNotification = async (application: Application, newStatus: string) => {
+    try {
+      // Send notification to admin
+      await supabase.functions.invoke('send-admin-notification', {
+        body: {
+          applicationId: application.id,
+          propertyAddress: `${application.property.address}, ${application.property.city}`,
+          tenantName: `${application.tenant_first_name} ${application.tenant_last_name}`,
+          landlordName: landlordName,
+          status: newStatus,
+          notificationType: 'application_status_change'
+        }
+      });
+      
+      console.log("Admin notification sent for application:", application.id);
+    } catch (error) {
+      console.error("Error sending admin notification:", error);
+      // Don't block the main flow if notification fails
+    }
+  };
 
   const handleStatusChange = async (applicationId: string, newStatus: string) => {
     setProcessingId(applicationId);
     
     try {
+      // Find the application
+      const application = applications.find(app => app.id === applicationId);
+      if (!application) {
+        throw new Error("Application not found");
+      }
+      
       // Update application status
       const { error } = await supabase
         .from('tenant_applications')
@@ -145,14 +204,14 @@ const LandlordApplications = () => {
 
       if (error) throw error;
 
+      // Send notification to admin about the status change
+      await sendAdminNotification(application, newStatus);
+
       if (newStatus === 'approved') {
         toast({
           title: "Application approved",
           description: "The Doorways admin team has been notified and will generate an offer shortly."
         });
-
-        // Notify admin about the approved application by updating status to 'approved'
-        // In a real app, we might send an email notification to admin here
       } else if (newStatus === 'rejected') {
         toast({
           title: "Application rejected",
@@ -209,6 +268,7 @@ const LandlordApplications = () => {
     return <Navigate to="/auth" replace />;
   }
 
+  
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -290,9 +350,6 @@ const LandlordApplications = () => {
                         </TableCell>
                         <TableCell>
                           {renderStatusBadge(application.status)}
-                        </TableCell>
-                        <TableCell>
-                          {new Date(application.created_at).toLocaleDateString()}
                         </TableCell>
                         <TableCell>
                           {application.status === 'pending' && (

@@ -1,3 +1,4 @@
+
 import * as React from "react"
 
 import type {
@@ -188,4 +189,20 @@ function useToast() {
   }
 }
 
-export { useToast, toast }
+// New function to create notification toasts
+function notify(options: {
+  title: string;
+  description?: string;
+  variant?: "default" | "destructive";
+  type?: "info" | "success" | "error" | "warning";
+}) {
+  const variant = options.variant || "default";
+  
+  toast({
+    title: options.title,
+    description: options.description,
+    variant: variant,
+  });
+}
+
+export { useToast, toast, notify }

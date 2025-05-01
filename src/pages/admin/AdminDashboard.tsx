@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Navigate, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/components/AuthProvider";
@@ -22,7 +23,8 @@ import {
   UserCheck, 
   Building, 
   FileText,
-  Users
+  Users,
+  Bell
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -81,6 +83,8 @@ const AdminDashboard = () => {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [statusChangeId, setStatusChangeId] = useState<string | null>(null);
   const [appSearchQuery, setAppSearchQuery] = useState("");
+  const [hasNewApprovedApplications, setHasNewApprovedApplications] = useState(false);
+  const [newApplicationsCount, setNewApplicationsCount] = useState(0);
   const navigate = useNavigate();
   
   useEffect(() => {
@@ -112,92 +116,99 @@ const AdminDashboard = () => {
     setupAdminRole();
   }, [user, role, setRole, toast]);
 
-  useEffect(() => {
-    const fetchApplications = async () => {
-      if (!user) return;
+  const fetchApplications = async () => {
+    if (!user) return;
+    
+    try {
+      console.log("Fetching applications...");
+      setLoading(true);
       
-      try {
-        // Fetch all approved applications that need offer generation
-        const { data: approvedData, error: approvedError } = await supabase
-          .from('tenant_applications')
-          .select(`
-            *,
-            property:property_id (
-              id, 
-              address, 
-              city,
-              rent_amount,
-              landlord_id
-            )
-          `)
-          .eq('status', 'approved')
-          .order('created_at', { ascending: false });
+      // Fetch all approved applications that need offer generation
+      const { data: approvedData, error: approvedError } = await supabase
+        .from('tenant_applications')
+        .select(`
+          *,
+          property:property_id (
+            id, 
+            address, 
+            city,
+            rent_amount,
+            landlord_id
+          )
+        `)
+        .eq('status', 'approved')
+        .order('created_at', { ascending: false });
 
-        if (approvedError) {
-          console.error("Error fetching approved applications:", approvedError);
-          throw approvedError;
-        }
-        
-        // Fetch all pending/under-review applications
-        const { data: pendingData, error: pendingError } = await supabase
-          .from('tenant_applications')
-          .select(`
-            *,
-            property:property_id (
-              id, 
-              address, 
-              city,
-              rent_amount,
-              landlord_id
-            )
-          `)
-          .in('status', ['pending', 'under-review'])
-          .order('created_at', { ascending: false });
-
-        if (pendingError) {
-          console.error("Error fetching pending applications:", pendingError);
-          throw pendingError;
-        }
-        
-        // Fetch all offers
-        const { data: offersData, error: offersError } = await supabase
-          .from('offers')
-          .select(`
-            *,
-            property:property_id (
-              address,
-              city,
-              rent_amount
-            ),
-            tenant_application:tenant_application_id (
-              tenant_first_name,
-              tenant_last_name,
-              tenant_email
-            )
-          `)
-          .order('created_at', { ascending: false });
-
-        if (offersError) {
-          console.error("Error fetching offers:", offersError);
-          throw offersError;
-        }
-
-        console.log("Applications that need offers:", approvedData);
-        setApplications(approvedData as Application[]);
-        setPendingApplications(pendingData as Application[]);
-        setOffers(offersData as Offer[]);
-      } catch (error: any) {
-        console.error("Error in fetchApplications:", error);
-        toast({
-          variant: "destructive",
-          title: "Error loading applications",
-          description: error.message
-        });
-      } finally {
-        setLoading(false);
+      if (approvedError) {
+        console.error("Error fetching approved applications:", approvedError);
+        throw approvedError;
       }
-    };
+      
+      // Fetch all pending/under-review applications
+      const { data: pendingData, error: pendingError } = await supabase
+        .from('tenant_applications')
+        .select(`
+          *,
+          property:property_id (
+            id, 
+            address, 
+            city,
+            rent_amount,
+            landlord_id
+          )
+        `)
+        .in('status', ['pending', 'under-review'])
+        .order('created_at', { ascending: false });
 
+      if (pendingError) {
+        console.error("Error fetching pending applications:", pendingError);
+        throw pendingError;
+      }
+      
+      // Fetch all offers
+      const { data: offersData, error: offersError } = await supabase
+        .from('offers')
+        .select(`
+          *,
+          property:property_id (
+            address,
+            city,
+            rent_amount
+          ),
+          tenant_application:tenant_application_id (
+            tenant_first_name,
+            tenant_last_name,
+            tenant_email
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (offersError) {
+        console.error("Error fetching offers:", offersError);
+        throw offersError;
+      }
+
+      console.log("Applications that need offers:", approvedData);
+      setApplications(approvedData as Application[]);
+      setPendingApplications(pendingData as Application[]);
+      setOffers(offersData as Offer[]);
+
+      // Reset new applications flag when data is refreshed
+      setHasNewApprovedApplications(false);
+      setNewApplicationsCount(0);
+    } catch (error: any) {
+      console.error("Error in fetchApplications:", error);
+      toast({
+        variant: "destructive",
+        title: "Error loading applications",
+        description: error.message
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     if (user && role === "admin") {
       fetchApplications();
       
@@ -210,13 +221,21 @@ const AdminDashboard = () => {
           table: 'tenant_applications' 
         }, (payload) => {
           console.log('Application change detected:', payload);
-          // Refresh data when changes occur
-          fetchApplications();
           
-          toast({
-            title: "Application Updated",
-            description: `An application has been ${payload.eventType}`,
-          });
+          // If a application status changed to approved, highlight this for the admin
+          if (payload.new && payload.new.status === 'approved') {
+            setHasNewApprovedApplications(true);
+            setNewApplicationsCount(prev => prev + 1);
+            
+            toast({
+              title: "New Approved Application",
+              description: "A landlord has approved an application that needs an offer.",
+              variant: "default",
+            });
+
+            // Update the applications list with the new application data
+            fetchApplications();
+          }
         })
         .on('postgres_changes', { 
           event: '*', 
@@ -235,10 +254,45 @@ const AdminDashboard = () => {
     }
   }, [user, toast, role]);
 
+  const sendAdminNotification = async (application: Application) => {
+    try {
+      // Get landlord information
+      const { data: landlordData } = await supabase
+        .from('landlords')
+        .select('first_name, last_name')
+        .eq('id', application.property.landlord_id)
+        .single();
+        
+      const landlordName = landlordData 
+        ? `${landlordData.first_name} ${landlordData.last_name}`
+        : "Unknown Landlord";
+        
+      // Send email notification when offer generation starts
+      await supabase.functions.invoke('send-admin-notification', {
+        body: {
+          applicationId: application.id,
+          propertyAddress: `${application.property.address}, ${application.property.city}`,
+          tenantName: `${application.tenant_first_name} ${application.tenant_last_name}`,
+          landlordName: landlordName,
+          status: 'pending_offer',
+          notificationType: 'offer_created'
+        }
+      });
+    } catch (error) {
+      console.error("Error sending admin notification:", error);
+      // Don't block the main flow if notification fails
+    }
+  };
+
   const markForOfferGeneration = async (applicationId: string) => {
     setProcessingId(applicationId);
     
     try {
+      // Find the application to get property details
+      const application = applications.find(app => app.id === applicationId);
+      
+      if (!application) throw new Error("Application not found");
+
       // Update application status to pending_offer
       const { error } = await supabase
         .from('tenant_applications')
@@ -246,11 +300,6 @@ const AdminDashboard = () => {
         .eq('id', applicationId);
 
       if (error) throw error;
-
-      // Find the application to get property details
-      const application = applications.find(app => app.id === applicationId);
-      
-      if (!application) throw new Error("Application not found");
 
       // Create an initial offer record
       const { error: offerError } = await supabase
@@ -268,8 +317,19 @@ const AdminDashboard = () => {
         description: "The offer for this application is being generated."
       });
 
+      // Send notification email to admin
+      await sendAdminNotification(application);
+
       // Update the application in the local state
       setApplications(prev => prev.filter(app => app.id !== applicationId));
+      
+      // Reset notification counter when action is taken
+      if (newApplicationsCount > 0) {
+        setNewApplicationsCount(prev => Math.max(0, prev - 1));
+      }
+      if (applications.length <= 1) {
+        setHasNewApprovedApplications(false);
+      }
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -378,15 +438,29 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
             
-            <Card>
+            <Card className={hasNewApprovedApplications ? "border-primary border-2 shadow-lg" : ""}>
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-medium flex items-center">
-                  <UserCheck className="mr-2 h-5 w-5 text-primary" />
-                  Approved Applications
+                <CardTitle className="text-lg font-medium flex items-center justify-between">
+                  <div className="flex items-center">
+                    <UserCheck className="mr-2 h-5 w-5 text-primary" />
+                    Approved Applications
+                  </div>
+                  {newApplicationsCount > 0 && (
+                    <div className="rounded-full bg-primary text-white w-6 h-6 flex items-center justify-center text-xs">
+                      {newApplicationsCount}
+                    </div>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">{applications.length}</div>
+                <div className="text-3xl font-bold">
+                  {applications.length}
+                  {hasNewApprovedApplications && (
+                    <span className="ml-2 text-sm text-primary animate-pulse">
+                      <Bell className="h-4 w-4 inline" /> New
+                    </span>
+                  )}
+                </div>
                 <p className="text-sm text-muted-foreground">Ready for offer generation</p>
               </CardContent>
             </Card>
@@ -405,10 +479,17 @@ const AdminDashboard = () => {
             </Card>
           </div>
 
-          <Tabs defaultValue="pending-applications">
+          <Tabs defaultValue={hasNewApprovedApplications ? "pending-offers" : "pending-applications"}>
             <TabsList className="grid w-full grid-cols-3 mb-6">
               <TabsTrigger value="pending-applications">Pending Applications</TabsTrigger>
-              <TabsTrigger value="pending-offers">Generate Offers</TabsTrigger>
+              <TabsTrigger value="pending-offers" className="relative">
+                Generate Offers
+                {hasNewApprovedApplications && (
+                  <span className="absolute -top-1 -right-1 rounded-full bg-primary text-white w-5 h-5 flex items-center justify-center text-xs">
+                    {newApplicationsCount}
+                  </span>
+                )}
+              </TabsTrigger>
               <TabsTrigger value="active-offers">Active Offers</TabsTrigger>
             </TabsList>
 
@@ -512,9 +593,16 @@ const AdminDashboard = () => {
             </TabsContent>
 
             <TabsContent value="pending-offers">
-              <Card>
+              <Card className={hasNewApprovedApplications ? "border-primary/50 border shadow-md" : ""}>
                 <CardHeader>
-                  <CardTitle>Applications Needing Offers</CardTitle>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>Applications Needing Offers</span>
+                    {hasNewApprovedApplications && (
+                      <Badge variant="outline" className="bg-primary/20 text-primary animate-pulse border-primary">
+                        New approvals
+                      </Badge>
+                    )}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {loading ? (
@@ -539,10 +627,18 @@ const AdminDashboard = () => {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {applications.map((application) => (
-                            <TableRow key={application.id}>
+                          {applications.map((application, index) => (
+                            <TableRow 
+                              key={application.id} 
+                              className={index === 0 && hasNewApprovedApplications ? "bg-primary/5" : ""}
+                            >
                               <TableCell>
-                                {application.tenant_first_name} {application.tenant_last_name}
+                                <div className="flex items-center">
+                                  {index === 0 && hasNewApprovedApplications && (
+                                    <span className="mr-2 h-2 w-2 rounded-full bg-primary animate-pulse"></span>
+                                  )}
+                                  {application.tenant_first_name} {application.tenant_last_name}
+                                </div>
                               </TableCell>
                               <TableCell>{application.tenant_email}</TableCell>
                               <TableCell>
@@ -559,6 +655,7 @@ const AdminDashboard = () => {
                                   size="sm" 
                                   onClick={() => markForOfferGeneration(application.id)}
                                   disabled={processingId === application.id}
+                                  className={index === 0 && hasNewApprovedApplications ? "bg-primary hover:bg-primary/90" : ""}
                                 >
                                   {processingId === application.id ? (
                                     <>
