@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Navigate, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/components/AuthProvider";
@@ -134,6 +135,24 @@ const AdminDashboard = () => {
       console.log("Fetching applications...");
       setLoading(true);
       
+      // DEBUG: Check all applications regardless of status to see what's available
+      const { data: allApps, error: allAppsError } = await supabase
+        .from('tenant_applications')
+        .select(`
+          id, 
+          status, 
+          created_at,
+          tenant_first_name,
+          tenant_last_name
+        `)
+        .order('created_at', { ascending: false });
+        
+      console.log("All tenant applications in the database:", allApps);
+      
+      if (allAppsError) {
+        console.error("Error fetching all applications:", allAppsError);
+      }
+      
       // Fetch all approved applications that need offer generation
       const { data: approvedData, error: approvedError } = await supabase
         .from('tenant_applications')
@@ -154,6 +173,8 @@ const AdminDashboard = () => {
         console.error("Error fetching approved applications:", approvedError);
         throw approvedError;
       }
+      
+      console.log("Applications with 'approved' status:", approvedData);
       
       // Fetch all pending/under-review applications
       const { data: pendingData, error: pendingError } = await supabase

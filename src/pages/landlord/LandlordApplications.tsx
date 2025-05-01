@@ -221,16 +221,28 @@ const LandlordApplications = () => {
         throw new Error("Application not found");
       }
       
+      console.log("Attempting to change application status", {
+        applicationId,
+        currentStatus: application.status,
+        newStatus,
+      });
+      
       // Update application status
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('tenant_applications')
         .update({ 
           status: newStatus,
           processed_at: new Date().toISOString()
         })
-        .eq('id', applicationId);
+        .eq('id', applicationId)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error updating application status:", error);
+        throw error;
+      }
+      
+      console.log("Application status updated successfully:", data);
 
       // Send notification to admin about the status change
       await sendAdminNotification(application, newStatus);
@@ -253,7 +265,21 @@ const LandlordApplications = () => {
           ? { ...app, status: newStatus } 
           : app
       ));
+      
+      // Verify update with a quick fetch
+      const { data: verifyData, error: verifyError } = await supabase
+        .from('tenant_applications')
+        .select('id, status')
+        .eq('id', applicationId)
+        .single();
+        
+      if (verifyError) {
+        console.error("Error verifying update:", verifyError);
+      } else {
+        console.log("Verification of status update:", verifyData);
+      }
     } catch (error: any) {
+      console.error("Error processing application:", error);
       toast({
         variant: "destructive",
         title: "Error processing application",
