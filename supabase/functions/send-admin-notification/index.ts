@@ -3,10 +3,21 @@
 console.log("Starting send-admin-notification function");
 
 // Note: This function needs the Resend API key to be properly configured
-import { Resend } from "resend";
+import { Resend } from "npm:resend@1.0.0";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY") || "");
 
+// Define CORS headers for browser requests
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
 Deno.serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+  
   try {
     // Log the request received
     console.log("Admin notification function called");
@@ -43,14 +54,14 @@ Deno.serve(async (req) => {
     // Return success response
     return new Response(
       JSON.stringify({ success: true, message: "Notification processed" }),
-      { headers: { "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
     // Log and return error
     console.error("Error in send-admin-notification function:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
