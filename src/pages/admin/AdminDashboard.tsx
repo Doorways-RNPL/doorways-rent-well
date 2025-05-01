@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Navigate, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/components/AuthProvider";
@@ -71,7 +72,7 @@ interface Offer {
   };
 }
 
-// Define the payload type for realtime updates
+// Define the payload type for realtime updates with explicit type checking
 interface RealtimePayload {
   new: {
     id: string;
@@ -83,6 +84,9 @@ interface RealtimePayload {
     status: string;
     [key: string]: any;
   };
+  eventType: 'INSERT' | 'UPDATE' | 'DELETE';
+  schema: string;
+  table: string;
   [key: string]: any;
 }
 
@@ -236,7 +240,7 @@ const AdminDashboard = () => {
             schema: 'public',
             table: 'tenant_applications'
           },
-          (payload) => {
+          (payload: RealtimePayload) => {
             console.log('Application change detected:', payload);
             
             // If a application status changed to approved, highlight this for the admin
@@ -262,7 +266,7 @@ const AdminDashboard = () => {
             schema: 'public',
             table: 'offers'
           },
-          (payload) => {
+          (payload: RealtimePayload) => {
             console.log('Offer change detected:', payload);
             // Refresh data when changes occur
             fetchApplications();

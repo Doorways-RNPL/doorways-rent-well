@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/components/AuthProvider";
@@ -35,7 +36,7 @@ interface Application {
   };
 }
 
-// Define the payload type for realtime updates
+// Define the payload type for realtime updates with explicit type checking
 interface RealtimePayload {
   new: {
     id: string;
@@ -47,6 +48,9 @@ interface RealtimePayload {
     status: string;
     [key: string]: any;
   };
+  eventType: 'INSERT' | 'UPDATE' | 'DELETE';
+  schema: string;
+  table: string;
   [key: string]: any;
 }
 
@@ -145,7 +149,6 @@ const LandlordApplications = () => {
       fetchApplications();
       
       // Setup realtime subscription for application updates
-      // Corrected syntax for Supabase channel subscription
       const channel = supabase
         .channel('landlord-application-updates')
         .on(
@@ -155,7 +158,7 @@ const LandlordApplications = () => {
             schema: 'public', 
             table: 'tenant_applications'
           }, 
-          (payload) => {
+          (payload: RealtimePayload) => {
             console.log('Application change detected:', payload);
             
             if (payload.new && applications.some(app => app.id === payload.new.id)) {
@@ -372,6 +375,9 @@ const LandlordApplications = () => {
                           {renderStatusBadge(application.status)}
                         </TableCell>
                         <TableCell>
+                          {new Date(application.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
                           {application.status === 'pending' && (
                             <div className="flex gap-2">
                               <Button 
@@ -424,104 +430,6 @@ const LandlordApplications = () => {
       </div>
     </DashboardLayout>
   );
-};
-
-// Helper functions - moved here to ensure they are defined
-const renderStatusBadge = (status: string) => {
-  switch (status) {
-    case 'pending':
-      return <Badge variant="outline" className="bg-yellow-500/20 text-yellow-500">Pending</Badge>;
-    case 'under-review':
-      return <Badge variant="outline" className="bg-blue-500/20 text-blue-500">Under Review</Badge>;
-    case 'approved':
-      return <Badge variant="outline" className="bg-green-500/20 text-green-500">Approved</Badge>;
-    case 'rejected':
-      return <Badge variant="outline" className="bg-red-500/20 text-red-500">Rejected</Badge>;
-    case 'pending_offer':
-      return <Badge variant="outline" className="bg-purple-500/20 text-purple-500">Pending Offer</Badge>;
-    default:
-      return <Badge variant="outline">{status}</Badge>;
-  }
-};
-
-// Calculate whether an applicant passes the income check (3x rent amount)
-const passesIncomeCheck = (application: Application) => {
-  if (!application.monthly_income || !application.property.rent_amount) return false;
-  return application.monthly_income >= application.property.rent_amount * 3;
-};
-
-const sendAdminNotification = async (application: Application, newStatus: string, landlordName: string) => {
-  try {
-    // Send notification to admin
-    await supabase.functions.invoke('send-admin-notification', {
-      body: {
-        applicationId: application.id,
-        propertyAddress: `${application.property.address}, ${application.property.city}`,
-        tenantName: `${application.tenant_first_name} ${application.tenant_last_name}`,
-        landlordName: landlordName,
-        status: newStatus,
-        notificationType: 'application_status_change'
-      }
-    });
-    
-    console.log("Admin notification sent for application:", application.id);
-  } catch (error) {
-    console.error("Error sending admin notification:", error);
-    // Don't block the main flow if notification fails
-  }
-};
-
-const handleStatusChange = async (applicationId: string, newStatus: string) => {
-  setProcessingId(applicationId);
-  
-  try {
-    // Find the application
-    const application = applications.find(app => app.id === applicationId);
-    if (!application) {
-      throw new Error("Application not found");
-    }
-    
-    // Update application status
-    const { error } = await supabase
-      .from('tenant_applications')
-      .update({ 
-        status: newStatus,
-        processed_at: new Date().toISOString()
-      })
-      .eq('id', applicationId);
-
-    if (error) throw error;
-
-    // Send notification to admin about the status change
-    await sendAdminNotification(application, newStatus, landlordName);
-
-    if (newStatus === 'approved') {
-      toast({
-        title: "Application approved",
-        description: "The Doorways admin team has been notified and will generate an offer shortly."
-      });
-    } else if (newStatus === 'rejected') {
-      toast({
-        title: "Application rejected",
-        description: "The tenant will be notified."
-      });
-    }
-
-    // Update the application in the local state
-    setApplications(prev => prev.map(app => 
-      app.id === applicationId 
-        ? { ...app, status: newStatus } 
-        : app
-    ));
-  } catch (error: any) {
-    toast({
-      variant: "destructive",
-      title: "Error processing application",
-      description: error.message
-    });
-  } finally {
-    setProcessingId(null);
-  }
 };
 
 export default LandlordApplications;
