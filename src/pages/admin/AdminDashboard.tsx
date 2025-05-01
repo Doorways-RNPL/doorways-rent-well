@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Navigate, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/components/AuthProvider";
@@ -237,7 +236,7 @@ const AdminDashboard = () => {
             schema: 'public',
             table: 'tenant_applications'
           },
-          (payload: RealtimePayload) => {
+          (payload) => {
             console.log('Application change detected:', payload);
             
             // If a application status changed to approved, highlight this for the admin
@@ -263,7 +262,7 @@ const AdminDashboard = () => {
             schema: 'public',
             table: 'offers'
           },
-          (payload: RealtimePayload) => {
+          (payload) => {
             console.log('Offer change detected:', payload);
             // Refresh data when changes occur
             fetchApplications();
