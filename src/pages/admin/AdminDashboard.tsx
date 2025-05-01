@@ -301,12 +301,36 @@ const AdminDashboard = () => {
         description: `Application status changed to ${newStatus}.`
       });
 
-      // Refresh the applications lists immediately
-      setPendingApplications(prev => 
-        prev.map(app => 
-          app.id === applicationId ? { ...app, status: newStatus } : app
-        )
-      );
+      // Update both pending and approved applications lists
+      if (newStatus === 'approved') {
+        // Move from pending to approved
+        const approvedApp = pendingApplications.find(app => app.id === applicationId);
+        if (approvedApp) {
+          setApplications(prev => [...prev, { ...approvedApp, status: newStatus }]);
+          setPendingApplications(prev => prev.filter(app => app.id !== applicationId));
+        }
+      } else if (newStatus === 'pending') {
+        // Move from approved to pending
+        const pendingApp = applications.find(app => app.id === applicationId);
+        if (pendingApp) {
+          setPendingApplications(prev => [...prev, { ...pendingApp, status: newStatus }]);
+          setApplications(prev => prev.filter(app => app.id !== applicationId));
+        } else {
+          // Update status in pending applications
+          setPendingApplications(prev => 
+            prev.map(app => 
+              app.id === applicationId ? { ...app, status: newStatus } : app
+            )
+          );
+        }
+      } else {
+        // For other statuses, just update the status in pending applications
+        setPendingApplications(prev => 
+          prev.map(app => 
+            app.id === applicationId ? { ...app, status: newStatus } : app
+          )
+        );
+      }
     } catch (error: any) {
       toast({
         variant: "destructive",
