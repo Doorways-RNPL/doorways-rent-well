@@ -57,6 +57,24 @@ Deno.serve(async (req) => {
       notificationType
     } = data;
     
+    // Validate required fields
+    if (!applicationId || !status) {
+      const missingFields = [];
+      if (!applicationId) missingFields.push('applicationId');
+      if (!status) missingFields.push('status');
+      
+      console.error(`Missing required fields: ${missingFields.join(', ')}`);
+      return new Response(
+        JSON.stringify({ 
+          error: `Missing required fields: ${missingFields.join(', ')}` 
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
+      );
+    }
+    
     // Prepare notification message
     const notificationData = {
       to: "admin@doorways.co.za",
@@ -65,9 +83,9 @@ Deno.serve(async (req) => {
         : "Offer Created",
       message: `
         Application ID: ${applicationId}
-        Property: ${propertyAddress}
-        Tenant: ${tenantName}
-        Landlord: ${landlordName}
+        Property: ${propertyAddress || 'N/A'}
+        Tenant: ${tenantName || 'N/A'}
+        Landlord: ${landlordName || 'N/A'}
         Status: ${status}
       `
     };

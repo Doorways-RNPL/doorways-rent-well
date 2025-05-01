@@ -58,6 +58,7 @@ const LandlordApplications = () => {
   const [landlordId, setLandlordId] = useState<string | null>(null);
   const [hasProperties, setHasProperties] = useState(false);
   const [landlordName, setLandlordName] = useState<string>("");
+  const [updateError, setUpdateError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchApplications = async () => {
@@ -188,7 +189,7 @@ const LandlordApplications = () => {
         }
       };
     }
-  }, [user, toast]);
+  }, [user, toast, applications.length]);
 
   const sendAdminNotification = async (application: Application, newStatus: string) => {
     try {
@@ -221,8 +222,46 @@ const LandlordApplications = () => {
     }
   };
 
+  const validateStatusUpdate = async (applicationId: string, expectedStatus: string) => {
+    try {
+      // Try up to 3 times with increasing delay
+      for (let attempt = 0; attempt < 3; attempt++) {
+        // Add small delay between validation attempts
+        if (attempt > 0) {
+          await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+        }
+        
+        const { data, error } = await supabase
+          .from('tenant_applications')
+          .select('status')
+          .eq('id', applicationId)
+          .single();
+
+        if (error) {
+          console.error(`Validation attempt ${attempt + 1} failed:`, error);
+          continue;
+        }
+        
+        console.log(`Validation attempt ${attempt + 1} result:`, data);
+        
+        if (data && data.status === expectedStatus) {
+          console.log("✅ Status update verified successfully!");
+          return true;
+        }
+        
+        console.warn(`⚠️ Status mismatch on attempt ${attempt + 1}! Expected: ${expectedStatus}, Got: ${data?.status}`);
+      }
+      
+      return false;
+    } catch (error) {
+      console.error("Error validating status update:", error);
+      return false;
+    }
+  };
+
   const handleStatusChange = async (applicationId: string, newStatus: string) => {
     setProcessingId(applicationId);
+    setUpdateError(null);
     
     try {
       // Find the application
@@ -266,6 +305,7 @@ const LandlordApplications = () => {
 
       if (error) {
         console.error("Error updating application status:", error);
+        setUpdateError("Failed to update application status - you may not have permission.");
         throw error;
       }
       
@@ -278,33 +318,18 @@ const LandlordApplications = () => {
           : app
       ));
 
-      // Verify the update was successful by fetching the latest data
-      const { data: verifyData, error: verifyError } = await supabase
-        .from('tenant_applications')
-        .select('id, status, processed_at')
-        .eq('id', applicationId)
-        .single();
+      // Verify the update was successful
+      const isVerified = await validateStatusUpdate(applicationId, newStatus);
         
-      if (verifyError) {
-        console.error("Error verifying update:", verifyError);
-        // Don't throw here, as the update might have succeeded
+      if (!isVerified) {
+        console.error("⚠️ Update verification failed after multiple attempts!");
+        setUpdateError("Application status updated in UI but database verification failed.");
         toast({
-          variant: "default",
-          title: "Update verification issue",
-          description: "The status was updated but verification failed. The admin should still receive the notification."
+          variant: "destructive",
+          title: "Status update inconsistency",
+          description: "The application status may not have updated properly in the database."
         });
-      } else {
-        console.log("✅ Verification of status update successful:", verifyData);
-        
-        if (verifyData.status !== newStatus) {
-          console.error("⚠️ Status mismatch after update! Expected:", newStatus, "Got:", verifyData.status);
-          toast({
-            variant: "destructive",
-            title: "Status update inconsistency",
-            description: "The application status may not have updated properly. Please try again."
-          });
-          return;
-        }
+        return;
       }
 
       // Now that we've confirmed the DB update, send the admin notification
@@ -384,6 +409,14 @@ const LandlordApplications = () => {
             <AlertDescription>
               You need to add properties before you can receive applications.
             </AlertDescription>
+          </Alert>
+        )}
+
+        {updateError && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Update Error</AlertTitle>
+            <AlertDescription>{updateError}</AlertDescription>
           </Alert>
         )}
 
