@@ -9,6 +9,8 @@ import { Resend } from "npm:resend@1.0.0";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Max-Age': '86400',
 };
 
 // Initialize Resend with proper error handling
@@ -27,9 +29,15 @@ if (resendApiKey) {
 }
 
 Deno.serve(async (req) => {
+  console.log(`Received ${req.method} request to send-admin-notification`);
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    console.log("Handling OPTIONS request with CORS headers");
+    return new Response(null, { 
+      status: 204, // Use explicit 204 status for OPTIONS
+      headers: corsHeaders 
+    });
   }
   
   try {
