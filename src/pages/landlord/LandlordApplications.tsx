@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/components/AuthProvider";
@@ -147,28 +148,32 @@ const LandlordApplications = () => {
       // Setup realtime subscription for application updates
       const channel = supabase
         .channel('landlord-application-updates')
-        .on('postgres_changes', { 
-          event: '*', 
-          schema: 'public', 
-          table: 'tenant_applications' 
-        }, (payload: RealtimePayload) => {
-          console.log('Application change detected:', payload);
-          
-          if (payload.new && applications.some(app => app.id === payload.new.id)) {
-            // Update the local state with the new data
-            setApplications(prevApps => 
-              prevApps.map(app => 
-                app.id === payload.new.id ? { ...app, ...payload.new } : app
-              )
-            );
+        .on(
+          'postgres_changes', 
+          { 
+            event: '*', 
+            schema: 'public', 
+            table: 'tenant_applications' 
+          }, 
+          (payload: RealtimePayload) => {
+            console.log('Application change detected:', payload);
             
-            // Show toast notification
-            toast({
-              title: "Application Updated",
-              description: `Application status is now ${payload.new.status}`,
-            });
+            if (payload.new && applications.some(app => app.id === payload.new.id)) {
+              // Update the local state with the new data
+              setApplications(prevApps => 
+                prevApps.map(app => 
+                  app.id === payload.new.id ? { ...app, ...payload.new } : app
+                )
+              );
+              
+              // Show toast notification
+              toast({
+                title: "Application Updated",
+                description: `Application status is now ${payload.new.status}`,
+              });
+            }
           }
-        })
+        )
         .subscribe();
         
       return () => {

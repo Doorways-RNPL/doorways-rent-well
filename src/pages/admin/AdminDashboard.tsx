@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Navigate, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/components/AuthProvider";
@@ -229,37 +230,45 @@ const AdminDashboard = () => {
       // Setup realtime subscription to changes in applications
       const channel = supabase
         .channel('admin-dashboard-changes')
-        .on('postgres_changes', { 
-          event: '*', 
-          schema: 'public', 
-          table: 'tenant_applications' 
-        }, (payload: RealtimePayload) => {
-          console.log('Application change detected:', payload);
-          
-          // If a application status changed to approved, highlight this for the admin
-          if (payload.new && payload.new.status === 'approved') {
-            setHasNewApprovedApplications(true);
-            setNewApplicationsCount(prev => prev + 1);
+        .on(
+          'postgres_changes', 
+          {
+            event: '*',
+            schema: 'public',
+            table: 'tenant_applications'
+          },
+          (payload: RealtimePayload) => {
+            console.log('Application change detected:', payload);
             
-            toast({
-              title: "New Approved Application",
-              description: "A landlord has approved an application that needs an offer.",
-              variant: "default",
-            });
+            // If a application status changed to approved, highlight this for the admin
+            if (payload.new && payload.new.status === 'approved') {
+              setHasNewApprovedApplications(true);
+              setNewApplicationsCount(prev => prev + 1);
+              
+              toast({
+                title: "New Approved Application",
+                description: "A landlord has approved an application that needs an offer.",
+                variant: "default",
+              });
 
-            // Update the applications list with the new application data
+              // Update the applications list with the new application data
+              fetchApplications();
+            }
+          }
+        )
+        .on(
+          'postgres_changes', 
+          {
+            event: '*',
+            schema: 'public',
+            table: 'offers'
+          },
+          (payload: RealtimePayload) => {
+            console.log('Offer change detected:', payload);
+            // Refresh data when changes occur
             fetchApplications();
           }
-        })
-        .on('postgres_changes', { 
-          event: '*', 
-          schema: 'public', 
-          table: 'offers' 
-        }, (payload: RealtimePayload) => {
-          console.log('Offer change detected:', payload);
-          // Refresh data when changes occur
-          fetchApplications();
-        })
+        )
         .subscribe();
         
       return () => {
