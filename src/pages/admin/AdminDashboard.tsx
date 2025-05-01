@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Navigate, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/components/AuthProvider";
@@ -70,6 +69,21 @@ interface Offer {
     tenant_last_name: string;
     tenant_email: string;
   };
+}
+
+// Define the payload type for realtime updates
+interface RealtimePayload {
+  new: {
+    id: string;
+    status: string;
+    [key: string]: any;
+  };
+  old: {
+    id: string;
+    status: string;
+    [key: string]: any;
+  };
+  [key: string]: any;
 }
 
 const AdminDashboard = () => {
@@ -219,7 +233,7 @@ const AdminDashboard = () => {
           event: '*', 
           schema: 'public', 
           table: 'tenant_applications' 
-        }, (payload) => {
+        }, (payload: RealtimePayload) => {
           console.log('Application change detected:', payload);
           
           // If a application status changed to approved, highlight this for the admin
@@ -241,7 +255,7 @@ const AdminDashboard = () => {
           event: '*', 
           schema: 'public', 
           table: 'offers' 
-        }, (payload) => {
+        }, (payload: RealtimePayload) => {
           console.log('Offer change detected:', payload);
           // Refresh data when changes occur
           fetchApplications();

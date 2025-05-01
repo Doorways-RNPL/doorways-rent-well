@@ -35,6 +35,21 @@ interface Application {
   };
 }
 
+// Define the payload type for realtime updates
+interface RealtimePayload {
+  new: {
+    id: string;
+    status: string;
+    [key: string]: any;
+  };
+  old: {
+    id: string;
+    status: string;
+    [key: string]: any;
+  };
+  [key: string]: any;
+}
+
 const LandlordApplications = () => {
   const { user, isLoading } = useAuth();
   const { role } = useUserRole();
@@ -136,7 +151,7 @@ const LandlordApplications = () => {
           event: '*', 
           schema: 'public', 
           table: 'tenant_applications' 
-        }, (payload) => {
+        }, (payload: RealtimePayload) => {
           console.log('Application change detected:', payload);
           
           if (payload.new && applications.some(app => app.id === payload.new.id)) {
