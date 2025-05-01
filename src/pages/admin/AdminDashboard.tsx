@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Navigate, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/components/AuthProvider";
@@ -36,6 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { RealtimeChannel } from "@supabase/supabase-js";
 
 interface Application {
   id: string;
@@ -72,22 +72,15 @@ interface Offer {
   };
 }
 
-// Define the payload type for realtime updates with explicit type checking
+// Define the payload type for realtime updates with proper typing
 interface RealtimePayload {
-  new: {
-    id: string;
-    status: string;
-    [key: string]: any;
-  };
-  old: {
-    id: string;
-    status: string;
-    [key: string]: any;
-  };
+  new: Application | Offer;
+  old: Application | Offer;
   eventType: 'INSERT' | 'UPDATE' | 'DELETE';
   schema: string;
   table: string;
-  [key: string]: any;
+  commit_timestamp: string;
+  errors: null | unknown;
 }
 
 const AdminDashboard = () => {
@@ -231,51 +224,61 @@ const AdminDashboard = () => {
       fetchApplications();
       
       // Setup realtime subscription to changes in applications
-      const channel = supabase
-        .channel('admin-dashboard-changes')
-        .on(
-          'postgres_changes', 
-          {
-            event: '*',
-            schema: 'public',
-            table: 'tenant_applications'
-          },
-          (payload: RealtimePayload) => {
-            console.log('Application change detected:', payload);
-            
-            // If a application status changed to approved, highlight this for the admin
-            if (payload.new && payload.new.status === 'approved') {
-              setHasNewApprovedApplications(true);
-              setNewApplicationsCount(prev => prev + 1);
+      let channel: RealtimeChannel | null = null;
+      
+      try {
+        channel = supabase
+          .channel('admin-dashboard-changes')
+          .on('postgres_changes', 
+            {
+              event: '*',
+              schema: 'public',
+              table: 'tenant_applications'
+            },
+            (payload) => {
+              console.log('Application change detected:', payload);
               
-              toast({
-                title: "New Approved Application",
-                description: "A landlord has approved an application that needs an offer.",
-                variant: "default",
-              });
+              // Type assertion to properly handle the payload
+              const typedPayload = payload as unknown as RealtimePayload;
+              
+              // If an application status changed to approved, highlight this for the admin
+              if (typedPayload.new && 'status' in typedPayload.new && typedPayload.new.status === 'approved') {
+                setHasNewApprovedApplications(true);
+                setNewApplicationsCount(prev => prev + 1);
+                
+                toast({
+                  title: "New Approved Application",
+                  description: "A landlord has approved an application that needs an offer.",
+                  variant: "default",
+                });
 
-              // Update the applications list with the new application data
+                // Update the applications list with the new application data
+                fetchApplications();
+              }
+            }
+          )
+          .on('postgres_changes', 
+            {
+              event: '*',
+              schema: 'public',
+              table: 'offers'
+            },
+            (payload) => {
+              console.log('Offer change detected:', payload);
+              // Refresh data when changes occur
               fetchApplications();
             }
-          }
-        )
-        .on(
-          'postgres_changes', 
-          {
-            event: '*',
-            schema: 'public',
-            table: 'offers'
-          },
-          (payload: RealtimePayload) => {
-            console.log('Offer change detected:', payload);
-            // Refresh data when changes occur
-            fetchApplications();
-          }
-        )
-        .subscribe();
+          )
+          .subscribe();
+      } catch (error) {
+        console.error("Error setting up realtime subscription:", error);
+      }
         
       return () => {
-        supabase.removeChannel(channel);
+        // Properly clean up the channel when component unmounts
+        if (channel) {
+          supabase.removeChannel(channel);
+        }
       };
     }
   }, [user, toast, role]);

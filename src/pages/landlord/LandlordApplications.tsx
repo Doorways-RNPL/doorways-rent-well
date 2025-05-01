@@ -19,6 +19,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { RealtimeChannel } from "@supabase/supabase-js";
 
 interface Application {
   id: string;
@@ -36,22 +37,15 @@ interface Application {
   };
 }
 
-// Define the payload type for realtime updates with explicit type checking
+// Define the payload type for realtime updates with proper typing
 interface RealtimePayload {
-  new: {
-    id: string;
-    status: string;
-    [key: string]: any;
-  };
-  old: {
-    id: string;
-    status: string;
-    [key: string]: any;
-  };
+  new: Application;
+  old: Application;
   eventType: 'INSERT' | 'UPDATE' | 'DELETE';
   schema: string;
   table: string;
-  [key: string]: any;
+  commit_timestamp: string;
+  errors: null | unknown;
 }
 
 const LandlordApplications = () => {
@@ -149,38 +143,49 @@ const LandlordApplications = () => {
       fetchApplications();
       
       // Setup realtime subscription for application updates
-      const channel = supabase
-        .channel('landlord-application-updates')
-        .on(
-          'postgres_changes', 
-          {
-            event: '*', 
-            schema: 'public', 
-            table: 'tenant_applications'
-          }, 
-          (payload: RealtimePayload) => {
-            console.log('Application change detected:', payload);
-            
-            if (payload.new && applications.some(app => app.id === payload.new.id)) {
-              // Update the local state with the new data
-              setApplications(prevApps => 
-                prevApps.map(app => 
-                  app.id === payload.new.id ? { ...app, ...payload.new } : app
-                )
-              );
+      let channel: RealtimeChannel | null = null;
+      
+      try {
+        channel = supabase
+          .channel('landlord-application-updates')
+          .on('postgres_changes', 
+            {
+              event: '*', 
+              schema: 'public', 
+              table: 'tenant_applications'
+            }, 
+            (payload) => {
+              console.log('Application change detected:', payload);
               
-              // Show toast notification
-              toast({
-                title: "Application Updated",
-                description: `Application status is now ${payload.new.status}`,
-              });
+              // Type assertion to properly handle the payload
+              const typedPayload = payload as unknown as RealtimePayload;
+              
+              if (typedPayload.new && applications.some(app => app.id === typedPayload.new.id)) {
+                // Update the local state with the new data
+                setApplications(prevApps => 
+                  prevApps.map(app => 
+                    app.id === typedPayload.new.id ? { ...app, ...typedPayload.new } : app
+                  )
+                );
+                
+                // Show toast notification
+                toast({
+                  title: "Application Updated",
+                  description: `Application status is now ${typedPayload.new.status}`,
+                });
+              }
             }
-          }
-        )
-        .subscribe();
+          )
+          .subscribe();
+      } catch (error) {
+        console.error("Error setting up realtime subscription:", error);
+      }
         
       return () => {
-        supabase.removeChannel(channel);
+        // Properly clean up the channel when component unmounts
+        if (channel) {
+          supabase.removeChannel(channel);
+        }
       };
     }
   }, [user, toast]);
