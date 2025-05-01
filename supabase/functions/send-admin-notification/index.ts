@@ -4,13 +4,27 @@ console.log("Starting send-admin-notification function");
 
 // Note: This function needs the Resend API key to be properly configured
 import { Resend } from "npm:resend@1.0.0";
-const resend = new Resend(Deno.env.get("RESEND_API_KEY") || "");
 
 // Define CORS headers for browser requests
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Initialize Resend with proper error handling
+let resend: any = null;
+const resendApiKey = Deno.env.get("RESEND_API_KEY");
+
+if (resendApiKey) {
+  try {
+    resend = new Resend(resendApiKey);
+    console.log("Resend client initialized");
+  } catch (err) {
+    console.error("Failed to initialize Resend client:", err);
+  }
+} else {
+  console.warn("RESEND_API_KEY environment variable is not set!");
+}
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
@@ -35,9 +49,8 @@ Deno.serve(async (req) => {
       notificationType
     } = data;
     
-    // This is a mock implementation since we don't have email set up properly
-    // In a real implementation, this would send an email using Resend
-    console.log("Would send notification:", {
+    // Prepare notification message
+    const notificationData = {
       to: "admin@doorways.co.za",
       subject: notificationType === "application_status_change" 
         ? `Application Status Changed: ${status}` 
@@ -49,9 +62,30 @@ Deno.serve(async (req) => {
         Landlord: ${landlordName}
         Status: ${status}
       `
-    });
+    };
     
-    // Return success response
+    // Attempt to send email only if Resend is properly initialized
+    if (resend) {
+      try {
+        const emailResult = await resend.emails.send({
+          from: 'Doorways <notifications@doorways.co.za>',
+          to: notificationData.to,
+          subject: notificationData.subject,
+          text: notificationData.message
+        });
+        
+        console.log("Email sent successfully:", emailResult);
+      } catch (emailError) {
+        console.error("Error sending email via Resend:", emailError);
+        console.log("Using fallback notification method (log only)");
+      }
+    } else {
+      // Fallback to logging only if Resend is not available
+      console.log("Would send notification (RESEND_API_KEY not configured):", notificationData);
+    }
+    
+    // Return success response - always return success even if email fails
+    // This ensures the application approval process continues
     return new Response(
       JSON.stringify({ success: true, message: "Notification processed" }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

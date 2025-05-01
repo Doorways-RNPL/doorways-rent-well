@@ -193,18 +193,28 @@ const LandlordApplications = () => {
   const sendAdminNotification = async (application: Application, newStatus: string) => {
     try {
       // Send notification to admin
-      await supabase.functions.invoke('send-admin-notification', {
-        body: {
-          applicationId: application.id,
-          propertyAddress: `${application.property.address}, ${application.property.city}`,
-          tenantName: `${application.tenant_first_name} ${application.tenant_last_name}`,
-          landlordName: landlordName,
-          status: newStatus,
-          notificationType: 'application_status_change'
-        }
+      const notificationPayload = {
+        applicationId: application.id,
+        propertyAddress: `${application.property.address}, ${application.property.city}`,
+        tenantName: `${application.tenant_first_name} ${application.tenant_last_name}`,
+        landlordName: landlordName,
+        status: newStatus,
+        notificationType: 'application_status_change'
+      };
+      
+      console.log("Sending admin notification with payload:", notificationPayload);
+      
+      const notificationResponse = await supabase.functions.invoke('send-admin-notification', {
+        body: notificationPayload
       });
       
-      console.log("Admin notification sent for application:", application.id);
+      console.log("Admin notification response:", notificationResponse);
+      
+      if (notificationResponse.error) {
+        console.warn("Notification failed but continuing process:", notificationResponse.error);
+      } else {
+        console.log("Admin notification sent successfully for application:", application.id);
+      }
     } catch (error) {
       console.error("Error sending admin notification:", error);
       // Don't block the main flow if notification fails
@@ -227,12 +237,29 @@ const LandlordApplications = () => {
         newStatus,
       });
       
-      // Update application status
+      // First verify the current status in the database
+      const { data: currentAppData, error: checkError } = await supabase
+        .from('tenant_applications')
+        .select('status')
+        .eq('id', applicationId)
+        .single();
+        
+      if (checkError) {
+        console.error("Error checking current application status:", checkError);
+        throw checkError;
+      }
+      
+      console.log("Current application status in DB:", currentAppData);
+      
+      // Update application status - use transaction-like approach for better reliability
+      console.log("Sending update to database...");
+      const updateTimestamp = new Date().toISOString();
+      
       const { data, error } = await supabase
         .from('tenant_applications')
         .update({ 
           status: newStatus,
-          processed_at: new Date().toISOString()
+          processed_at: updateTimestamp
         })
         .eq('id', applicationId)
         .select();
@@ -244,9 +271,46 @@ const LandlordApplications = () => {
       
       console.log("Application status updated successfully:", data);
 
-      // Send notification to admin about the status change
+      // Update the application in the local state first for immediate feedback
+      setApplications(prev => prev.map(app => 
+        app.id === applicationId 
+          ? { ...app, status: newStatus } 
+          : app
+      ));
+
+      // Verify the update was successful by fetching the latest data
+      const { data: verifyData, error: verifyError } = await supabase
+        .from('tenant_applications')
+        .select('id, status, processed_at')
+        .eq('id', applicationId)
+        .single();
+        
+      if (verifyError) {
+        console.error("Error verifying update:", verifyError);
+        // Don't throw here, as the update might have succeeded
+        toast({
+          variant: "default",
+          title: "Update verification issue",
+          description: "The status was updated but verification failed. The admin should still receive the notification."
+        });
+      } else {
+        console.log("✅ Verification of status update successful:", verifyData);
+        
+        if (verifyData.status !== newStatus) {
+          console.error("⚠️ Status mismatch after update! Expected:", newStatus, "Got:", verifyData.status);
+          toast({
+            variant: "destructive",
+            title: "Status update inconsistency",
+            description: "The application status may not have updated properly. Please try again."
+          });
+          return;
+        }
+      }
+
+      // Now that we've confirmed the DB update, send the admin notification
       await sendAdminNotification(application, newStatus);
 
+      // Show appropriate toast based on the status
       if (newStatus === 'approved') {
         toast({
           title: "Application approved",
@@ -258,32 +322,13 @@ const LandlordApplications = () => {
           description: "The tenant will be notified."
         });
       }
-
-      // Update the application in the local state
-      setApplications(prev => prev.map(app => 
-        app.id === applicationId 
-          ? { ...app, status: newStatus } 
-          : app
-      ));
       
-      // Verify update with a quick fetch
-      const { data: verifyData, error: verifyError } = await supabase
-        .from('tenant_applications')
-        .select('id, status')
-        .eq('id', applicationId)
-        .single();
-        
-      if (verifyError) {
-        console.error("Error verifying update:", verifyError);
-      } else {
-        console.log("Verification of status update:", verifyData);
-      }
     } catch (error: any) {
       console.error("Error processing application:", error);
       toast({
         variant: "destructive",
         title: "Error processing application",
-        description: error.message
+        description: error.message || "Failed to update application status."
       });
     } finally {
       setProcessingId(null);
@@ -322,7 +367,6 @@ const LandlordApplications = () => {
     return <Navigate to="/auth" replace />;
   }
 
-  
   return (
     <DashboardLayout>
       <div className="space-y-6">
