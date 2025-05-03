@@ -1,4 +1,3 @@
-
 export const stepTitles = [
   "Personal Info", 
   "Address History", 
@@ -23,12 +22,7 @@ export const validateStep = (step: number, data: any) => {
       if (isCurrentResidence && leaseDuration < 2) return false;
       if (!isCurrentResidence && leaseDuration < 12) return false;
       
-      if (!data.monthlyRent || !data.leaseStartDate || !data.landlordName || 
-          !data.landlordEmail || !data.landlordPhone) return false;
-          
-      if (data.residenceType === 'new' && (!data.propertyAddress || !data.propertyCity)) {
-        return false;
-      }
+      if (!data.propertyId || !data.propertyAddress || !data.propertyCity || !data.monthlyRent || !data.leaseStartDate) return false;
       return true;
     case 5:
       return true; // Documents are optional in demo

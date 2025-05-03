@@ -57,9 +57,6 @@ const TenantApplication = () => {
     monthlyRent: "",
     leaseStartDate: "",
     leaseDuration: "12",
-    landlordName: "",
-    landlordEmail: "",
-    landlordPhone: "",
     
     idDocument: null as File | null,
     proofOfIncome: null as File | null,
@@ -234,9 +231,24 @@ const TenantApplication = () => {
       });
       return;
     }
-    
+
+    // Backend validation: Check property exists and is valid
+    const { data: property, error: propertyError } = await supabase
+      .from('properties')
+      .select('id, address, city, rent_amount, landlord_id')
+      .eq('id', applicationData.propertyId)
+      .single();
+    if (propertyError || !property) {
+      toast({
+        title: "Invalid property",
+        description: "The selected property does not exist or is invalid.",
+        variant: "destructive",
+      });
+      return;
+    }
+    // Remove landlord validation (no longer required)
+    // setIsSubmitting(true);
     setIsSubmitting(true);
-    
     try {
       // Create tenant record if it doesn't exist
       const { data: existingTenant, error: tenantCheckError } = await supabase
@@ -315,11 +327,14 @@ const TenantApplication = () => {
           tenant_first_name: applicationData.firstName,
           tenant_last_name: applicationData.lastName,
           property_id: applicationData.propertyId,
+          property_address: property.address, // denormalized
+          property_city: property.city, // denormalized
+          property_rent: property.rent_amount, // denormalized
           tenant_id: tenantId,
           monthly_income: parseFloat(applicationData.monthlyIncome),
           employment_info: employmentInfo,
           additional_info: additionalInfo,
-          status: 'pending',
+          status: 'pending_admin_offer', // new status
           message: "I would like to apply for this property."
         })
         .select('id')
@@ -390,15 +405,13 @@ const TenantApplication = () => {
         propertyCity: applicationData.propertyCity,
         monthlyRent: applicationData.monthlyRent,
         leaseStartDate: applicationData.leaseStartDate,
-        landlordName: applicationData.landlordName,
-        landlordEmail: applicationData.landlordEmail,
-        status: 'pending',
+        status: 'pending_admin_offer',
         createdAt: new Date().toISOString(),
         tenantId: tenantId
       }));
       
       // Set initial application status
-      localStorage.setItem("application-status", "pending");
+      localStorage.setItem("application-status", "pending_admin_offer");
       localStorage.setItem("application-submitted", "true");
       
       // Add a short delay before redirecting to ensure database writes complete
@@ -429,10 +442,17 @@ const TenantApplication = () => {
       case 4:
         return (
           <TenantStep4 
-            data={applicationData} 
-            updateData={updateApplicationData} 
-            properties={availableProperties} 
-            isLoading={isLoadingProperties} 
+            data={{
+              propertyId: applicationData.propertyId,
+              propertyAddress: applicationData.propertyAddress,
+              propertyCity: applicationData.propertyCity,
+              monthlyRent: applicationData.monthlyRent,
+              leaseStartDate: applicationData.leaseStartDate,
+              leaseDuration: applicationData.leaseDuration,
+            }}
+            updateData={updateApplicationData}
+            properties={availableProperties}
+            isLoading={isLoadingProperties}
           />
         );
       case 5:

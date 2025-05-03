@@ -34,64 +34,126 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Json } from "@/integrations/supabase/types";
+import { Tables } from "@/integrations/supabase/types";
+import { NotificationService } from "@/services/notificationService";
+import { EmailService } from "@/services/emailService";
+import { WhatsAppService } from "@/services/whatsappService";
 
-interface Application {
-  id: string;
-  tenant_first_name: string;
-  tenant_last_name: string;
-  tenant_email: string;
-  status: string;
-  created_at: string;
-  monthly_income: number | null;
-  property: {
-    id: string;
-    address: string;
-    city: string;
-    rent_amount: number | null;
-    landlord_id: string;
-  };
-}
-
-interface Offer {
-  id: string;
-  status: string;
-  created_at: string;
-  property_id: string;
-  tenant_application_id: string;
-  property: {
+type Application = Tables<'tenant_applications'> & {
+  property?: {
     address: string;
     city: string;
     rent_amount: number | null;
   };
-  tenant_application: {
+};
+
+type Offer = Tables<'offers'> & {
+  property?: {
+    address: string;
+    city: string;
+    rent_amount: number | null;
+  };
+  tenant_application?: {
     tenant_first_name: string;
     tenant_last_name: string;
     tenant_email: string;
   };
-}
+};
+
+type PaymentBreakdown = {
+  monthlyRent: number;
+  tenantUpfrontPayment: number;
+  doorwaysCoverage: number;
+  repaymentInstallments: {
+    amount: number;
+    dueDate: string;
+  }[];
+};
+
+const calculatePaymentBreakdown = (monthlyRent: number): PaymentBreakdown => {
+  const tenantUpfrontPayment = monthlyRent * 0.5;
+  const doorwaysCoverage = monthlyRent * 0.5;
+  const installmentAmount = doorwaysCoverage / 3;
+
+  // Calculate due dates for the 3 installments
+  const today = new Date();
+  const firstInstallment = new Date(today);
+  firstInstallment.setDate(today.getDate() + 1); // First payment due tomorrow
+
+  const secondInstallment = new Date(today);
+  secondInstallment.setDate(today.getDate() + 15); // Second payment due in 15 days
+
+  const thirdInstallment = new Date(today);
+  thirdInstallment.setDate(today.getDate() + 25); // Third payment due in 25 days
+
+  return {
+    monthlyRent,
+    tenantUpfrontPayment,
+    doorwaysCoverage,
+    repaymentInstallments: [
+      { amount: installmentAmount, dueDate: firstInstallment.toISOString().split('T')[0] },
+      { amount: installmentAmount, dueDate: secondInstallment.toISOString().split('T')[0] },
+      { amount: installmentAmount, dueDate: thirdInstallment.toISOString().split('T')[0] }
+    ]
+  };
+};
 
 const AdminDashboard = () => {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const { role, setRole } = useUserRole();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [applications, setApplications] = useState<Application[]>([]);
   const [pendingApplications, setPendingApplications] = useState<Application[]>([]);
   const [offers, setOffers] = useState<Offer[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [isDataLoading, setIsDataLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [statusChangeId, setStatusChangeId] = useState<string | null>(null);
   const [appSearchQuery, setAppSearchQuery] = useState("");
-  const navigate = useNavigate();
+  const [offerSearchQuery, setOfferSearchQuery] = useState("");
   
   useEffect(() => {
-    // Setup role as admin for users visiting this page
-    const setupAdminRole = async () => {
+    // Check if user has admin privileges
+    const checkAdminAccess = async () => {
       if (!user) {
+        navigate('/auth');
         return;
       }
       
+      console.log('Checking admin access for user:', user.id);
+      
+      // Check if user has admin role in database
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
+
+      if (roleError) {
+        console.error("Error checking admin role:", roleError);
+        toast({
+          variant: "destructive",
+          title: "Access Error",
+          description: "Unable to verify admin privileges."
+        });
+        navigate('/');
+        return;
+      }
+
+      if (roleData?.role !== 'admin') {
+        console.log('User does not have admin role:', roleData?.role);
+        toast({
+          variant: "destructive",
+          title: "Access Denied",
+          description: "You do not have administrator privileges."
+        });
+        navigate('/');
+        return;
+      }
+
+      // User has admin role, proceed with setup
       if (role !== "admin") {
-        console.log("Setting user role to admin");
         try {
           await setRole("admin");
           toast({
@@ -103,62 +165,45 @@ const AdminDashboard = () => {
           toast({
             variant: "destructive",
             title: "Access Error",
-            description: "Failed to grant admin privileges. Please try again."
+            description: "Failed to grant admin privileges."
           });
+          navigate('/');
         }
       }
     };
 
-    setupAdminRole();
-  }, [user, role, setRole, toast]);
+    checkAdminAccess();
+  }, [user, role, setRole, toast, navigate]);
 
   useEffect(() => {
     const fetchApplications = async () => {
       if (!user) return;
       
       try {
-        // Fetch all approved applications that need offer generation
-        const { data: approvedData, error: approvedError } = await supabase
-          .from('tenant_applications')
-          .select(`
-            *,
-            property:property_id (
-              id, 
-              address, 
-              city,
-              rent_amount,
-              landlord_id
-            )
-          `)
-          .eq('status', 'approved')
-          .order('created_at', { ascending: false });
-
-        if (approvedError) {
-          console.error("Error fetching approved applications:", approvedError);
-          throw approvedError;
-        }
+        console.log('Fetching all applications...');
         
-        // Fetch all pending/under-review applications
+        // Fetch applications with status 'pending_admin_offer' with property join
         const { data: pendingData, error: pendingError } = await supabase
           .from('tenant_applications')
           .select(`
             *,
-            property:property_id (
-              id, 
-              address, 
+            property:properties!property_id(
+              address,
               city,
-              rent_amount,
-              landlord_id
+              rent_amount
             )
           `)
-          .in('status', ['pending', 'under-review'])
+          .in('status', ['pending_admin_offer'])
           .order('created_at', { ascending: false });
 
         if (pendingError) {
-          console.error("Error fetching pending applications:", pendingError);
+          console.error("Error fetching applications:", pendingError);
           throw pendingError;
         }
         
+        console.log('Applications found:', pendingData);
+        setPendingApplications(pendingData as Application[]);
+
         // Fetch all offers
         const { data: offersData, error: offersError } = await supabase
           .from('offers')
@@ -182,10 +227,10 @@ const AdminDashboard = () => {
           throw offersError;
         }
 
-        console.log("Applications that need offers:", approvedData);
-        setApplications(approvedData as Application[]);
-        setPendingApplications(pendingData as Application[]);
-        setOffers(offersData as Offer[]);
+        if (Array.isArray(offersData)) {
+          setOffers(offersData as Offer[]);
+        }
+
       } catch (error: any) {
         console.error("Error in fetchApplications:", error);
         toast({
@@ -194,7 +239,7 @@ const AdminDashboard = () => {
           description: error.message
         });
       } finally {
-        setLoading(false);
+        setIsDataLoading(false);
       }
     };
 
@@ -208,10 +253,10 @@ const AdminDashboard = () => {
           event: '*', 
           schema: 'public', 
           table: 'tenant_applications' 
-        }, (payload) => {
+        }, async (payload) => {
           console.log('Application change detected:', payload);
           // Refresh data when changes occur
-          fetchApplications();
+          await fetchApplications();
           
           toast({
             title: "Application Updated",
@@ -222,14 +267,26 @@ const AdminDashboard = () => {
           event: '*', 
           schema: 'public', 
           table: 'offers' 
-        }, (payload) => {
+        }, async (payload) => {
           console.log('Offer change detected:', payload);
           // Refresh data when changes occur
-          fetchApplications();
+          await fetchApplications();
         })
-        .subscribe();
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            console.log('Successfully subscribed to real-time changes');
+          } else if (status === 'CHANNEL_ERROR') {
+            console.error('Error subscribing to real-time changes');
+            toast({
+              variant: "destructive",
+              title: "Subscription Error",
+              description: "Failed to subscribe to real-time updates"
+            });
+          }
+        });
         
       return () => {
+        console.log('Cleaning up real-time subscription');
         supabase.removeChannel(channel);
       };
     }
@@ -257,7 +314,7 @@ const AdminDashboard = () => {
         .from('offers')
         .insert({
           tenant_application_id: applicationId,
-          property_id: application.property.id,
+          property_id: application.property_id,
           status: 'pending'
         });
 
@@ -281,20 +338,154 @@ const AdminDashboard = () => {
     }
   };
 
+  const sendPaymentBreakdownToTenant = async (application: Application) => {
+    if (!application.property?.rent_amount) return;
+
+    const paymentBreakdown = calculatePaymentBreakdown(application.property.rent_amount);
+    
+    try {
+      // Update the application with payment breakdown
+      const { error: updateError } = await supabase
+        .from('tenant_applications')
+        .update({
+          additional_info: {
+            ...(application.additional_info as Record<string, any> || {}),
+            payment_breakdown: paymentBreakdown
+          } as Json,
+          message: `
+            Dear ${application.tenant_first_name} ${application.tenant_last_name},
+            
+            Your application for ${application.property.address} has been approved!
+            
+            Payment Breakdown:
+            - Monthly Rent: $${paymentBreakdown.monthlyRent}
+            - Upfront Payment (50%): $${paymentBreakdown.tenantUpfrontPayment.toFixed(2)}
+            - Doorways Coverage (50%): $${paymentBreakdown.doorwaysCoverage.toFixed(2)}
+            
+            Repayment Schedule:
+            ${paymentBreakdown.repaymentInstallments.map((installment, index) => `
+              - Installment ${index + 1}: $${installment.amount.toFixed(2)} (Due: ${installment.dueDate})
+            `).join('\n')}
+            
+            Please make your upfront payment to proceed with the lease agreement.
+            
+            Best regards,
+            Doorways Team
+          `
+        })
+        .eq('id', application.id);
+
+      if (updateError) throw updateError;
+
+      // Create notification
+      await NotificationService.createNotification(
+        application.tenant_id || '',
+        'Application Approved',
+        `Your application for ${application.property.address} has been approved!`,
+        'application',
+        { application_id: application.id, payment_breakdown: paymentBreakdown }
+      );
+
+      // Send email
+      await EmailService.sendApplicationApprovalEmail(
+        application.tenant_email,
+        application.tenant_first_name,
+        application.property.address,
+        paymentBreakdown
+      );
+
+      // Send WhatsApp message if phone number is available
+      if (application.phone) {
+        await WhatsAppService.sendApplicationApprovalMessage(
+          application.phone,
+          application.tenant_first_name,
+          application.property.address,
+          paymentBreakdown
+        );
+      }
+
+      toast({
+        title: "Payment breakdown sent",
+        description: "The tenant has been notified of their payment schedule via email, WhatsApp, and dashboard notification."
+      });
+    } catch (error: any) {
+      console.error("Error sending payment breakdown:", error);
+      toast({
+        variant: "destructive",
+        title: "Error sending payment breakdown",
+        description: error.message
+      });
+    }
+  };
+
   const changeApplicationStatus = async (applicationId: string, newStatus: string) => {
     setStatusChangeId(applicationId);
     
     try {
+      console.log('Attempting to change application status for ID:', applicationId);
+      // Debug: Check if the application exists before updating
+      const { data: checkData, error: checkError } = await supabase
+        .from('tenant_applications')
+        .select('*')
+        .eq('id', applicationId)
+        .maybeSingle();
+      console.log('Pre-update select result:', checkData, checkError);
+      if (!checkData) {
+        throw new Error('No application found with this ID');
+      }
       // Update application status
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('tenant_applications')
         .update({ 
           status: newStatus,
           processed_at: newStatus === 'pending' ? null : new Date().toISOString()
         })
-        .eq('id', applicationId);
+        .eq('id', applicationId)
+        .select()
+        .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating application status:', error);
+        throw error;
+      }
+
+      console.log('Current application status in DB:', data);
+
+      // If application is approved, send payment breakdown
+      if (newStatus === 'approved' && data) {
+        await sendPaymentBreakdownToTenant(data);
+      }
+
+      // Verify the update
+      const verifyUpdate = async (attempts = 0): Promise<void> => {
+        if (attempts >= 3) {
+          throw new Error('Update verification failed after multiple attempts!');
+        }
+
+        // Add a small delay before checking
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        const { data: verificationData, error: verificationError } = await supabase
+          .from('tenant_applications')
+          .select('status')
+          .eq('id', applicationId)
+          .single();
+
+        if (verificationError) {
+          console.error('Verification error:', verificationError);
+          throw verificationError;
+        }
+
+        console.log(`Validation attempt ${attempts + 1} result:`, verificationData);
+
+        if (verificationData?.status !== newStatus) {
+          console.warn(`Status mismatch on attempt ${attempts + 1}! Expected: ${newStatus}, Got: ${verificationData?.status}`);
+          return verifyUpdate(attempts + 1);
+        }
+      };
+
+      // Verify the update
+      await verifyUpdate();
 
       toast({
         title: "Status Updated",
@@ -332,6 +523,7 @@ const AdminDashboard = () => {
         );
       }
     } catch (error: any) {
+      console.error('Error in changeApplicationStatus:', error);
       toast({
         variant: "destructive",
         title: "Error updating status",
@@ -360,15 +552,24 @@ const AdminDashboard = () => {
     }
   };
 
+  const isApplicationApproved = async (id: string): Promise<boolean> => {
+    const { data } = await supabase
+      .from("tenant_applications")
+      .select("status")
+      .eq("id", id)
+      .single();
+    return data?.status === "approved";
+  };
+
   // Filter applications based on search query
   const filteredPendingApplications = pendingApplications.filter(app => 
     app.tenant_first_name.toLowerCase().includes(appSearchQuery.toLowerCase()) ||
     app.tenant_last_name.toLowerCase().includes(appSearchQuery.toLowerCase()) ||
     app.tenant_email.toLowerCase().includes(appSearchQuery.toLowerCase()) ||
-    app.property.address.toLowerCase().includes(appSearchQuery.toLowerCase())
+    (app.property?.address?.toLowerCase() || '').includes(appSearchQuery.toLowerCase())
   );
 
-  if (isLoading) {
+  if (isAuthLoading || isDataLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
@@ -452,7 +653,7 @@ const AdminDashboard = () => {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {loading ? (
+                  {isDataLoading ? (
                     <div className="flex justify-center py-8">
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     </div>
@@ -483,10 +684,10 @@ const AdminDashboard = () => {
                                 </div>
                               </TableCell>
                               <TableCell>
-                                {application.property.address}, {application.property.city}
+                                {application.property?.address}, {application.property?.city}
                               </TableCell>
                               <TableCell>
-                                ${application.property.rent_amount}/month
+                                ${application.property?.rent_amount}/month
                               </TableCell>
                               <TableCell>
                                 {renderStatusBadge(application.status)}
@@ -496,7 +697,7 @@ const AdminDashboard = () => {
                               </TableCell>
                               <TableCell>
                                 <div className="flex items-center gap-2">
-                                  {application.status === 'pending' ? (
+                                  {(application.status === 'pending' || application.status === 'pending_admin_offer') ? (
                                     <Button 
                                       size="sm" 
                                       variant="outline" 
@@ -509,19 +710,49 @@ const AdminDashboard = () => {
                                       Start Review
                                     </Button>
                                   ) : application.status === 'under-review' ? (
-                                    <Select 
-                                      onValueChange={(value) => changeApplicationStatus(application.id, value)}
-                                      disabled={statusChangeId === application.id}
-                                    >
-                                      <SelectTrigger className="w-[180px]">
-                                        <SelectValue placeholder="Change Status" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="approved">Approve</SelectItem>
-                                        <SelectItem value="rejected">Reject</SelectItem>
-                                        <SelectItem value="pending">Reset to Pending</SelectItem>
-                                      </SelectContent>
-                                    </Select>
+                                    <div className="space-y-4">
+                                      <div className="bg-muted p-4 rounded-lg">
+                                        <h4 className="font-medium mb-2">Payment Breakdown</h4>
+                                        {application.property?.rent_amount && (
+                                          <>
+                                            <div className="grid grid-cols-2 gap-2 text-sm">
+                                              <div>Monthly Rent:</div>
+                                              <div className="font-medium">${application.property?.rent_amount}</div>
+                                              
+                                              <div>Tenant Upfront (50%):</div>
+                                              <div className="font-medium">${(application.property?.rent_amount * 0.5).toFixed(2)}</div>
+                                              
+                                              <div>Doorways Coverage (50%):</div>
+                                              <div className="font-medium">${(application.property?.rent_amount * 0.5).toFixed(2)}</div>
+                                            </div>
+                                            
+                                            <div className="mt-4">
+                                              <h5 className="font-medium mb-2">Repayment Schedule</h5>
+                                              {calculatePaymentBreakdown(application.property?.rent_amount).repaymentInstallments.map((installment, index) => (
+                                                <div key={index} className="grid grid-cols-2 gap-2 text-sm">
+                                                  <div>Installment {index + 1} (Due {installment.dueDate}):</div>
+                                                  <div className="font-medium">${installment.amount.toFixed(2)}</div>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </>
+                                        )}
+                                      </div>
+                                      
+                                      <Select 
+                                        onValueChange={(value) => changeApplicationStatus(application.id, value)}
+                                        disabled={statusChangeId === application.id}
+                                      >
+                                        <SelectTrigger className="w-[180px]">
+                                          <SelectValue placeholder="Change Status" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="approved">Approve</SelectItem>
+                                          <SelectItem value="rejected">Reject</SelectItem>
+                                          <SelectItem value="pending">Reset to Pending</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
                                   ) : null}
                                 </div>
                               </TableCell>
@@ -541,7 +772,7 @@ const AdminDashboard = () => {
                   <CardTitle>Applications Needing Offers</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {loading ? (
+                  {isDataLoading ? (
                     <div className="flex justify-center py-8">
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     </div>
@@ -570,10 +801,10 @@ const AdminDashboard = () => {
                               </TableCell>
                               <TableCell>{application.tenant_email}</TableCell>
                               <TableCell>
-                                {application.property.address}, {application.property.city}
+                                {application.property?.address}, {application.property?.city}
                               </TableCell>
                               <TableCell>
-                                ${application.property.rent_amount}/month
+                                ${application.property?.rent_amount}/month
                               </TableCell>
                               <TableCell>
                                 {new Date(application.created_at).toLocaleDateString()}
@@ -610,7 +841,7 @@ const AdminDashboard = () => {
                   <CardTitle>Active Offers</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {loading ? (
+                  {isDataLoading ? (
                     <div className="flex justify-center py-8">
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     </div>

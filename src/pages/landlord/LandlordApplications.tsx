@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/components/AuthProvider";
@@ -27,6 +26,7 @@ interface Application {
   tenant_email: string;
   status: string;
   created_at: string;
+  updated_at: string;
   monthly_income: number | null;
   property: {
     id: string;
@@ -95,10 +95,17 @@ const LandlordApplications = () => {
         const { data, error } = await supabase
           .from('tenant_applications')
           .select(`
-            *,
-            property:property_id (
-              id, 
-              address, 
+            id,
+            tenant_first_name,
+            tenant_last_name,
+            tenant_email,
+            status,
+            created_at,
+            updated_at,
+            monthly_income,
+            property:properties!property_id(
+              id,
+              address,
               city,
               rent_amount
             )

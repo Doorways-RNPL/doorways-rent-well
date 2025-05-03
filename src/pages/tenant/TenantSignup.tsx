@@ -85,23 +85,6 @@ const TenantSignup = () => {
     checkUserStatus();
   }, [user, navigate]);
 
-  // Check if user is coming from role selection
-  useEffect(() => {
-    const userEmail = localStorage.getItem("tenant-email");
-    
-    if (userEmail) {
-      setFormData(prev => ({ ...prev, email: userEmail }));
-    }
-    
-    if (!userEmail && !user) {
-      toast({
-        title: "Information",
-        description: "Please select your role before proceeding.",
-      });
-      navigate("/auth");
-    }
-  }, [toast, user, navigate]);
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -128,13 +111,25 @@ const TenantSignup = () => {
         localStorage.setItem("tenant-firstName", formData.firstName || user.user_metadata?.first_name || "");
         localStorage.setItem("tenant-lastName", formData.lastName || user.user_metadata?.last_name || "");
         
-        // Note: We no longer set the role here - it should be set in RoleSelection component
-        
-        toast({
-          title: "Information saved!",
-          description: "You can now complete your application.",
-        });
-        
+        // Check if tenant record exists
+        const { data: tenantData, error: tenantError } = await supabase
+          .from('tenants')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (!tenantData) {
+          // Insert tenant record
+          const { error: insertError } = await supabase.from('tenants').insert({
+            user_id: user.id,
+            first_name: formData.firstName || user.user_metadata?.first_name || '',
+            last_name: formData.lastName || user.user_metadata?.last_name || '',
+            email: formData.email || user.email || '',
+            phone: formData.phone
+          });
+          if (insertError) {
+            throw insertError;
+          }
+        }
         // Redirect to the application form
         navigate("/tenant/application");
         return;
@@ -181,15 +176,33 @@ const TenantSignup = () => {
       localStorage.setItem("tenant-firstName", formData.firstName);
       localStorage.setItem("tenant-lastName", formData.lastName);
       
-      // No longer setting tenant role automatically
+      // Set tenant role
+      await supabase.from('user_roles').insert({
+        user_id: data.user?.id,
+        role: 'tenant'
+      });
+
+      // Insert tenant record for new user
+      if (data.user?.id) {
+        const { error: insertError } = await supabase.from('tenants').insert({
+          user_id: data.user.id,
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          email: formData.email,
+          phone: formData.phone
+        });
+        if (insertError) {
+          throw insertError;
+        }
+      }
       
       toast({
         title: "Account created!",
-        description: "Please select your role to continue.",
+        description: "You can now complete your application.",
       });
       
-      // Redirect to the auth page for role selection
-      navigate("/auth", { state: { showRoleSelection: true } });
+      // Redirect to the application form
+      navigate("/tenant/application");
     } catch (error: any) {
       console.error("Signup error:", error);
       toast({
@@ -253,6 +266,7 @@ const TenantSignup = () => {
                     : "Create your account to access affordable housing through our Rent Now, Pay Later solution."}
                 </CardDescription>
               </CardHeader>
+              
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-5">
                   <div className="grid grid-cols-2 gap-4">
@@ -331,67 +345,71 @@ const TenantSignup = () => {
                     </div>
                   </div>
 
-                  <div className="space-y-1">
-                    <Label htmlFor="password">Password</Label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground">
-                        <Lock className="h-5 w-5" />
+                  {!user && (
+                    <>
+                      <div className="space-y-1">
+                        <Label htmlFor="password">Password</Label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground">
+                            <Lock className="h-5 w-5" />
+                          </div>
+                          <Input
+                            id="password"
+                            name="password"
+                            type={showPassword ? "text" : "password"}
+                            value={formData.password}
+                            onChange={handleInputChange}
+                            className="pl-10"
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={togglePasswordVisibility}
+                            className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
+                          >
+                            {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                          </button>
+                        </div>
+                        {formData.password && (
+                          <div className="h-1 w-full bg-gray-300 mt-1">
+                            <div 
+                              className={`h-full ${
+                                formData.password.length < 6 ? "bg-red-500 w-1/3" : 
+                                formData.password.length < 10 ? "bg-yellow-500 w-2/3" : 
+                                "bg-green-500 w-full"
+                              }`}
+                            ></div>
+                          </div>
+                        )}
+                        <p className="text-xs text-white/60 mt-1">Password must be at least 6 characters</p>
                       </div>
-                      <Input
-                        id="password"
-                        name="password"
-                        type={showPassword ? "text" : "password"}
-                        value={formData.password}
-                        onChange={handleInputChange}
-                        className="pl-10"
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={togglePasswordVisibility}
-                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
-                      >
-                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                      </button>
-                    </div>
-                    {formData.password && (
-                      <div className="h-1 w-full bg-gray-300 mt-1">
-                        <div 
-                          className={`h-full ${
-                            formData.password.length < 6 ? "bg-red-500 w-1/3" : 
-                            formData.password.length < 10 ? "bg-yellow-500 w-2/3" : 
-                            "bg-green-500 w-full"
-                          }`}
-                        ></div>
-                      </div>
-                    )}
-                    <p className="text-xs text-white/60 mt-1">Password must be at least 6 characters</p>
-                  </div>
 
-                  <div className="space-y-1">
-                    <Label htmlFor="confirmPassword">Confirm Password</Label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground">
-                        <Lock className="h-5 w-5" />
+                      <div className="space-y-1">
+                        <Label htmlFor="confirmPassword">Confirm Password</Label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground">
+                            <Lock className="h-5 w-5" />
+                          </div>
+                          <Input
+                            id="confirmPassword"
+                            name="confirmPassword"
+                            type={showConfirmPassword ? "text" : "password"}
+                            value={formData.confirmPassword}
+                            onChange={handleInputChange}
+                            className="pl-10"
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={toggleConfirmPasswordVisibility}
+                            className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
+                          >
+                            {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                          </button>
+                        </div>
                       </div>
-                      <Input
-                        id="confirmPassword"
-                        name="confirmPassword"
-                        type={showConfirmPassword ? "text" : "password"}
-                        value={formData.confirmPassword}
-                        onChange={handleInputChange}
-                        className="pl-10"
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={toggleConfirmPasswordVisibility}
-                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
-                      >
-                        {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                      </button>
-                    </div>
-                  </div>
+                    </>
+                  )}
                   
                   <Button 
                     type="submit" 

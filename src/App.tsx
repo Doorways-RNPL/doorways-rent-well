@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -26,6 +25,12 @@ import { useUserRole } from "@/components/UserRoleProvider";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import RoleManager from "@/pages/admin/RoleManager";
+import PropertyDetails from "./pages/landlord/PropertyDetails";
+import PropertyEdit from "./pages/landlord/PropertyEdit";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminProperties from "./pages/admin/AdminProperties";
+import AdminApplications from "./pages/admin/AdminApplications";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -162,38 +167,37 @@ const App = () => (
               <Route path="/tenants" element={<TenantsPage />} />
               <Route path="/auth" element={<AuthPage />} />
               
-              {/* Tenant registration - requires auth but not necessarily tenant role yet */}
-              <Route element={<AuthGuard allowedRoles={['tenant']} />}>
-                <Route path="/tenant-signup" element={<TenantSignup />} />
-              </Route>
-              
               {/* Tenant routes - require tenant role */}
               <Route element={<AuthGuard allowedRoles={['tenant']} />}>
+                <Route path="/tenant-signup" element={<TenantSignup />} />
                 <Route path="/tenant/application" element={<TenantApplication />} />
                 <Route path="/tenant/dashboard" element={<TenantDashboard />} />
               </Route>
               
               {/* Landlord routes - require landlord role */}
               <Route element={<AuthGuard allowedRoles={['landlord']} />}>
-                <Route path="/landlord/dashboard" element={<LandlordDashboard />} />
                 <Route path="/landlord/property/new" element={<PropertyWizard />} />
+                <Route path="/landlord/dashboard" element={<LandlordDashboard />} />
+                <Route path="/landlord/property/:id" element={<PropertyDetails />} />
+                <Route path="/landlord/property/:id/edit" element={<PropertyEdit />} />
                 <Route path="/landlord/applications" element={<LandlordApplications />} />
                 <Route path="/landlord/offers" element={<LandlordOffers />} />
-                <Route path="/landlord/tenants" element={<Navigate to="/landlord/dashboard" replace />} />
-                <Route path="/landlord/payments" element={<Navigate to="/landlord/dashboard" replace />} />
-                <Route path="/landlord/settings" element={<Navigate to="/landlord/dashboard" replace />} />
               </Route>
               
               {/* Admin routes - require admin role */}
               <Route element={<AuthGuard allowedRoles={['admin']} />}>
                 <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                <Route path="/admin/users" element={<AdminUsers />} />
+                <Route path="/admin/properties" element={<AdminProperties />} />
+                <Route path="/admin/applications" element={<AdminApplications />} />
+                <Route path="/admin/role-manager" element={<RoleManager />} />
               </Route>
               
               {/* Legacy route redirects */}
-              <Route path="/apply-as-tenant" element={<Navigate to="/auth" state={{ showSignup: true, intendedRole: 'tenant' }} replace />} />
               <Route path="/apply" element={<Navigate to="/auth" state={{ showSignup: true, intendedRole: 'tenant' }} replace />} />
+              <Route path="/list-property" element={<Navigate to="/auth" state={{ showSignup: true, intendedRole: 'landlord' }} replace />} />
               
-              {/* Fallback route */}
+              {/* 404 route */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

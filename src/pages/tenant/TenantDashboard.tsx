@@ -9,6 +9,7 @@ import { Clock, Award, Info } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { useUserRole } from "@/components/UserRoleProvider";
 import { supabase } from "@/integrations/supabase/client";
+import { NotificationBell } from "@/components/NotificationBell";
 
 interface ApplicationData {
   id: string;
@@ -16,10 +17,12 @@ interface ApplicationData {
   property_id: string;
   tenant_first_name: string;
   tenant_last_name: string;
+  tenant_email: string;
+  monthly_income: number | null;
   property?: {
     address: string;
     city: string;
-    rent_amount: number;
+    rent_amount: number | null;
   };
   additional_info?: {
     lease_start_date?: string;
@@ -27,6 +30,7 @@ interface ApplicationData {
   };
   created_at: string;
   processed_at?: string;
+  updated_at: string;
 }
 
 interface LocalApplicationData {
@@ -171,12 +175,15 @@ const TenantDashboard = () => {
                 property_id: localApp.propertyId || "",
                 tenant_first_name: localApp.firstName || "",
                 tenant_last_name: localApp.lastName || "",
+                tenant_email: "",
+                monthly_income: null,
                 property: {
                   address: localApp.propertyAddress || "",
                   city: localApp.propertyCity || "",
                   rent_amount: parseFloat(localApp.monthlyRent) || 0
                 },
-                created_at: localApp.createdAt || new Date().toISOString()
+                created_at: localApp.createdAt || new Date().toISOString(),
+                updated_at: new Date().toISOString()
               };
               setApplicationData(tempAppData);
               return;
@@ -195,8 +202,18 @@ const TenantDashboard = () => {
         const { data: applications, error: applicationError, count } = await supabase
           .from('tenant_applications')
           .select(`
-            *,
-            property:property_id (
+            id,
+            status,
+            property_id,
+            tenant_first_name,
+            tenant_last_name,
+            tenant_email,
+            monthly_income,
+            additional_info,
+            created_at,
+            processed_at,
+            updated_at,
+            property:properties!property_id(
               address,
               city,
               rent_amount
@@ -230,12 +247,15 @@ const TenantDashboard = () => {
                 property_id: localApp.propertyId || "",
                 tenant_first_name: localApp.firstName || "",
                 tenant_last_name: localApp.lastName || "",
+                tenant_email: "",
+                monthly_income: null,
                 property: {
                   address: localApp.propertyAddress || "",
                   city: localApp.propertyCity || "",
                   rent_amount: parseFloat(localApp.monthlyRent) || 0
                 },
-                created_at: localApp.createdAt || new Date().toISOString()
+                created_at: localApp.createdAt || new Date().toISOString(),
+                updated_at: new Date().toISOString()
               };
               setApplicationData(tempAppData);
             }
@@ -281,12 +301,15 @@ const TenantDashboard = () => {
                 property_id: localApp.propertyId || "",
                 tenant_first_name: localApp.firstName || "",
                 tenant_last_name: localApp.lastName || "",
+                tenant_email: "",
+                monthly_income: null,
                 property: {
                   address: localApp.propertyAddress || "",
                   city: localApp.propertyCity || "",
                   rent_amount: parseFloat(localApp.monthlyRent) || 0
                 },
-                created_at: localApp.createdAt || new Date().toISOString()
+                created_at: localApp.createdAt || new Date().toISOString(),
+                updated_at: new Date().toISOString()
               };
               setApplicationData(tempAppData);
             } else {
@@ -677,6 +700,7 @@ const TenantDashboard = () => {
         </div>
       </main>
       <Footer />
+      <NotificationBell />
     </div>
   );
 };

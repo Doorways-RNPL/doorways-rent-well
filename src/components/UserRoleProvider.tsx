@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState } from "react";
 import { useAuth } from "./AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
@@ -146,18 +145,53 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
       setIsLoadingRole(true);
       console.log("Setting role for user:", user.id, "to:", newRole);
       
-      // First check if a role already exists for this user to prevent duplicate key errors
+      // First check if a role already exists for this user
       const { data: existingRole } = await supabase
         .from('user_roles')
         .select('id, role')
         .eq('user_id', user.id)
         .maybeSingle();
+
+      // Prevent setting admin role through normal role assignment
+      if (newRole === 'admin' && (!existingRole || existingRole.role !== 'admin')) {
+        console.error("Unauthorized attempt to set admin role");
+        toast({
+          title: "Access Denied",
+          description: "Admin role can only be assigned through proper channels.",
+          variant: "destructive",
+        });
+        setIsLoadingRole(false);
+        return;
+      }
+
+      // Only allow tenant or landlord roles for normal assignment
+      if (newRole !== 'tenant' && newRole !== 'landlord' && !existingRole?.role) {
+        console.error("Invalid role assignment attempt:", newRole);
+        toast({
+          title: "Invalid Role",
+          description: "Only tenant or landlord roles can be assigned.",
+          variant: "destructive",
+        });
+        setIsLoadingRole(false);
+        return;
+      }
       
       let error;
       
       if (existingRole) {
+        // Only update if not changing from admin to another role
+        if (existingRole.role === 'admin' && newRole !== 'admin') {
+          console.error("Attempt to change from admin role");
+          toast({
+            title: "Action Denied",
+            description: "Admin role cannot be changed to another role.",
+            variant: "destructive",
+          });
+          setIsLoadingRole(false);
+          return;
+        }
+
         console.log("Existing role found, updating to:", newRole);
-        // Update existing role
         const result = await supabase
           .from('user_roles')
           .update({ role: newRole })
@@ -166,7 +200,6 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
         error = result.error;
       } else {
         console.log("No existing role, inserting new role:", newRole);
-        // Insert new role
         const result = await supabase
           .from('user_roles')
           .insert({

@@ -1,4 +1,3 @@
-
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -19,9 +18,6 @@ interface TenantStep4Props {
     monthlyRent: string;
     leaseStartDate: string;
     leaseDuration: string;
-    landlordName: string;
-    landlordEmail: string;
-    landlordPhone: string;
   };
   updateData: (data: Partial<TenantStep4Props['data']>) => void;
   properties: PropertyOption[];
@@ -109,37 +105,6 @@ const TenantStep4 = ({ data, updateData, properties, isLoading }: TenantStep4Pro
               <SelectItem value="36">36 months</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="landlordName">Landlord Name (if applying for current residence)</Label>
-          <Input
-            id="landlordName"
-            value={data.landlordName}
-            onChange={(e) => updateData({ landlordName: e.target.value })}
-            placeholder="Enter landlord name"
-          />
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="landlordEmail">Landlord Email</Label>
-          <Input
-            id="landlordEmail"
-            type="email"
-            value={data.landlordEmail}
-            onChange={(e) => updateData({ landlordEmail: e.target.value })}
-            placeholder="Enter landlord email"
-          />
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="landlordPhone">Landlord Phone</Label>
-          <Input
-            id="landlordPhone"
-            value={data.landlordPhone}
-            onChange={(e) => updateData({ landlordPhone: e.target.value })}
-            placeholder="Enter landlord phone number"
-          />
         </div>
       </div>
     </div>

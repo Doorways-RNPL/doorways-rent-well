@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -138,6 +137,43 @@ const RoleSelection = ({ email, onComplete, intendedRole }: RoleSelectionProps) 
     setSelectedRole(role);
   };
   
+  // Helper function to handle tenant role
+  const handleTenantRole = async (redirectPath?: string | null) => {
+    // Check if tenant profile exists
+    const { data: tenantData, error: tenantError } = await supabase
+      .from('tenants')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+      
+    if (tenantData) {
+      console.log("Existing tenant profile found");
+      
+      // Check if tenant has a recent application before redirecting
+      const { data: applications, count } = await supabase
+        .from('tenant_applications')
+        .select('id', { count: 'exact' })
+        .eq('tenant_id', tenantData.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+        
+      if (count && count > 0) {
+        console.log("Tenant has application, redirecting to dashboard");
+        navigate(redirectPath || '/tenant/dashboard');
+      } else {
+        // No applications yet, redirect to application page
+        console.log("No application found, redirecting to application");
+        navigate('/tenant/application');
+      }
+      return;
+    } else {
+      // Tenant role but no profile, go to signup
+      console.log("Tenant role but no profile, going to signup");
+      navigate('/tenant-signup');
+      return;
+    }
+  };
+  
   const handleContinue = async () => {
     if (!selectedRole) {
       toast({
@@ -166,12 +202,12 @@ const RoleSelection = ({ email, onComplete, intendedRole }: RoleSelectionProps) 
 
       // Direct user to appropriate page based on role
       if (selectedRole === "landlord") {
-        await handleLandlordContinue(redirectPath);
+        await handleLandlordRole(redirectPath);
       } else if (selectedRole === "admin") {
         // Admin flow - direct users to admin dashboard without creating any profile
         navigate('/admin/dashboard');
       } else if (selectedRole === "tenant") {
-        await handleTenantContinue(redirectPath);
+        await handleTenantRole(redirectPath);
       }
       
       if (onComplete) onComplete();
@@ -187,81 +223,24 @@ const RoleSelection = ({ email, onComplete, intendedRole }: RoleSelectionProps) 
     }
   };
   
-  // Helper function to handle landlord flow
-  const handleLandlordContinue = async (redirectPath?: string | null) => {
-    // First check if a landlord profile already exists
-    const { data: existingLandlord, error: checkError } = await supabase
+  // Helper function to handle landlord role
+  const handleLandlordRole = async (redirectPath?: string | null) => {
+    // Check if landlord profile exists
+    const { data: landlordData, error: landlordError } = await supabase
       .from('landlords')
       .select('id')
       .eq('user_id', user.id)
       .maybeSingle();
-
-    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "no rows returned"
-      throw checkError;
-    }
-
-    if (existingLandlord) {
-      // Landlord profile exists, redirect to dashboard
-      navigate(redirectPath || "/landlord/dashboard");
-      return;
-    }
-
-    const firstName = localStorage.getItem("tenant-firstName") || "";
-    const lastName = localStorage.getItem("tenant-lastName") || "";
-    
-    const { error: profileError } = await supabase.from('landlords').insert({
-      email: email || user.email,
-      first_name: firstName,
-      last_name: lastName,
-      user_id: user.id
-    });
-
-    if (profileError) {
-      throw profileError;
-    }
-
-    navigate(redirectPath || "/landlord/property/new");
-  };
-  
-  // Helper function to handle tenant flow
-  const handleTenantContinue = async (redirectPath?: string | null) => {
-    // Check if tenant profile already exists
-    const { data: existingTenant, error: checkError } = await supabase
-      .from('tenants')
-      .select('id')
-      .eq('user_id', user.id)
-      .maybeSingle();
       
-    if (existingTenant) {
-      // Check if tenant has applications already
-      const { count } = await supabase
-        .from('tenant_applications')
-        .select('id', { count: 'exact' })
-        .eq('tenant_id', existingTenant.id)
-        .limit(1);
-        
-      if (count && count > 0) {
-        // Has application, go to dashboard
-        navigate('/tenant/dashboard');
-        return;
-      } else {
-        // No applications yet
-        navigate('/tenant/application');
-        return;
-      }
-    }
-
-    // Check if we have tenant info in localStorage
-    const hasBasicInfo = localStorage.getItem("tenant-firstName") && 
-                         localStorage.getItem("tenant-lastName") && 
-                         localStorage.getItem("tenant-email");
-                         
-    if (hasBasicInfo) {
-      // If we have basic info, go directly to application
-      navigate('/tenant/application');
+    if (landlordData) {
+      console.log("Existing landlord profile found, redirecting to dashboard");
+      navigate(redirectPath || '/landlord/dashboard');
+      return;
     } else {
-      // No basic info yet, go to signup page first
-      navigate('/tenant-signup');
+      // No landlord profile yet, go to property wizard
+      console.log("No landlord profile found, redirecting to property wizard");
+      navigate('/landlord/property/new');
+      return;
     }
   };
   

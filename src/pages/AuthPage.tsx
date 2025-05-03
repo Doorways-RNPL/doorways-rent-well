@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -197,15 +196,37 @@ export default function AuthPage() {
     }
 
     // Store in local storage for persistence across pages
-    localStorage.setItem("tenant-email", email);
-    localStorage.setItem("tenant-firstName", firstName);
-    localStorage.setItem("tenant-lastName", lastName);
+    localStorage.setItem("user-email", email);
+    localStorage.setItem("user-firstName", firstName);
+    localStorage.setItem("user-lastName", lastName);
+
+    // If intended role is set, set it immediately
+    if (intendedRole) {
+      if (signUpData.user) {
+        await supabase.from('user_roles').insert({
+          user_id: signUpData.user.id,
+          role: intendedRole
+        });
+      }
+
+      // Redirect based on role
+      if (intendedRole === 'tenant') {
+        navigate('/tenant-signup');
+      } else if (intendedRole === 'landlord') {
+        navigate('/landlord/property/new');
+      }
+    } else {
+      // Show role selection if no intended role
+      setAuthCompleted(true);
+    }
 
     toast({
       title: "Account Created Successfully",
-      description: "Please select how you'd like to use Doorways.",
+      description: intendedRole 
+        ? `You can now complete your ${intendedRole} profile.` 
+        : "Please select how you'd like to use Doorways.",
     });
-    setAuthCompleted(true);
+    
     setLoading(false);
   };
 
